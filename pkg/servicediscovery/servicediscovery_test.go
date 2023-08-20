@@ -1,11 +1,11 @@
-package v1
+package servicediscovery
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"testing"
 
+	v1 "github.com/kubescape/backend/pkg/servicediscovery/v1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,16 +15,16 @@ func init() {
 	flag.StringVar(&testUrl, "url", "", "Service Discovery Server To Test Against")
 }
 
-func TestServiceDiscovery(t *testing.T) {
+func TestServiceDiscoveryV1(t *testing.T) {
 	flag.Parse()
 	if testUrl == "" {
 		t.Skip("skipping test because no URL was provided")
 	}
 
-	server := NewServiceDiscoveryServer(testUrl)
-	sdUrl := server.GetServiceDiscoveryUrl()
+	client := v1.NewServiceDiscoveryClientV1(testUrl)
+	sdUrl := client.GetServiceDiscoveryUrl()
 	t.Logf("testing URL: %s", sdUrl)
-	services, err := GetServices(context.Background(), server)
+	services, err := GetServices(client)
 	if err != nil {
 		assert.FailNowf(t, fmt.Sprintf("failed to get services from url: %s (HTTP GET)", sdUrl), err.Error())
 	}

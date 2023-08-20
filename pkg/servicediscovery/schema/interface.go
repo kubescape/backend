@@ -1,4 +1,4 @@
-package v1
+package schema
 
 type IBackendServices interface {
 	SetReportReceiverHttpUrl(string)
@@ -11,4 +11,17 @@ type IBackendServices interface {
 	GetGatewayUrl() string
 	GetApiServerUrl() string
 	GetMetricsUrl() string
+}
+
+type IServiceDiscoveryClient interface {
+	GetHost() string
+	GetScheme() string
+	GetPath() string
+	GetServiceDiscoveryUrl() string
+	ParseResponse(any) (IBackendServices, error)
+}
+
+type IServiceDiscoveryServer interface {
+	GetVersion() string
+	GetResponse() any
 }

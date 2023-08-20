@@ -1,61 +1,93 @@
 package v1
 
 import (
+	"fmt"
 	"net/url"
 
+	"github.com/kubescape/backend/pkg/servicediscovery/schema"
 	"github.com/kubescape/backend/pkg/utils"
 )
 
-func (sd *ServiceDiscoveryResponse) SetReportReceiverHttpUrl(val string) {
-	sd.EventReceiverHttpUrl = val
-}
-
-func (sd *ServiceDiscoveryResponse) SetReportReceiverWebsocketUrl(val string) {
-	sd.EventReceiverWebsocketUrl = val
-}
-
-func (sd *ServiceDiscoveryResponse) SetGatewayUrl(val string) {
-	sd.GatewayUrl = val
-}
-
-func (sd *ServiceDiscoveryResponse) SetApiServerUrl(val string) {
-	sd.ApiServerUrl = val
-}
-
-func (sd *ServiceDiscoveryResponse) SetMetricsUrl(val string) {
-	sd.MetricsUrl = val
-}
-
-func (sd *ServiceDiscoveryResponse) GetReportReceiverHttpUrl() string {
-	return sd.EventReceiverHttpUrl
-}
-
-func (sd *ServiceDiscoveryResponse) GetReportReceiverWebsocketUrl() string {
-	return sd.EventReceiverWebsocketUrl
-}
-
-func (sd *ServiceDiscoveryResponse) GetGatewayUrl() string {
-	return sd.GatewayUrl
-}
-
-func (sd *ServiceDiscoveryResponse) GetApiServerUrl() string {
-	return sd.ApiServerUrl
-}
-
-func (sd *ServiceDiscoveryResponse) GetMetricsUrl() string {
-	return sd.MetricsUrl
-}
-
-func NewServiceDiscoveryServer(url string) *ServiceDiscoveryServer {
+func NewServiceDiscoveryClientV1(url string) *ServiceDiscoveryClientV1 {
 	scheme, host := utils.ParseHost(url)
-	return &ServiceDiscoveryServer{scheme: scheme, host: host, path: ServiceDiscoveryPath}
+	return &ServiceDiscoveryClientV1{scheme: scheme, host: host, path: ServiceDiscoveryPathV1}
 }
 
-func (sds *ServiceDiscoveryServer) GetServiceDiscoveryUrl() string {
+func (sds *ServiceDiscoveryClientV1) GetServiceDiscoveryUrl() string {
 	u := url.URL{
 		Host:   sds.host,
 		Scheme: sds.scheme,
 		Path:   sds.path,
 	}
 	return u.String()
+}
+
+func (sds *ServiceDiscoveryClientV1) GetHost() string {
+	return sds.host
+}
+func (sds *ServiceDiscoveryClientV1) GetPath() string {
+	return sds.path
+}
+
+func (sds *ServiceDiscoveryClientV1) GetScheme() string {
+	return sds.scheme
+}
+
+func (sds *ServiceDiscoveryClientV1) ParseResponse(response any) (schema.IBackendServices, error) {
+	if res, ok := response.(ServicesV1); ok {
+		return &res, nil
+	}
+	return nil, fmt.Errorf("invalid response")
+}
+
+func NewServiceDiscoveryServerV1(services ServicesV1) *ServiceDiscoveryServerV1 {
+	return &ServiceDiscoveryServerV1{version: ApiVersion, services: services}
+}
+
+func (sds *ServiceDiscoveryServerV1) GetResponse() any {
+	return sds.services
+}
+
+func (sds *ServiceDiscoveryServerV1) GetVersion() string {
+	return sds.version
+}
+
+func (s *ServicesV1) SetReportReceiverHttpUrl(val string) {
+	s.EventReceiverHttpUrl = val
+}
+
+func (s *ServicesV1) SetReportReceiverWebsocketUrl(val string) {
+	s.EventReceiverWebsocketUrl = val
+}
+
+func (s *ServicesV1) SetGatewayUrl(val string) {
+	s.GatewayUrl = val
+}
+
+func (s *ServicesV1) SetApiServerUrl(val string) {
+	s.ApiServerUrl = val
+}
+
+func (s *ServicesV1) SetMetricsUrl(val string) {
+	s.MetricsUrl = val
+}
+
+func (s *ServicesV1) GetReportReceiverHttpUrl() string {
+	return s.EventReceiverHttpUrl
+}
+
+func (s *ServicesV1) GetReportReceiverWebsocketUrl() string {
+	return s.EventReceiverWebsocketUrl
+}
+
+func (s *ServicesV1) GetGatewayUrl() string {
+	return s.GatewayUrl
+}
+
+func (s *ServicesV1) GetApiServerUrl() string {
+	return s.ApiServerUrl
+}
+
+func (s *ServicesV1) GetMetricsUrl() string {
+	return s.MetricsUrl
 }

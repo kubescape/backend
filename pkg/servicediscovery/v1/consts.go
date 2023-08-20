@@ -1,5 +1,6 @@
 package v1
 
 const (
-	ServiceDiscoveryPath = "/api/v1/servicediscovery"
+	ServiceDiscoveryPathV1 = "/api/v1/servicediscovery"
+	ApiVersion             = "v1"
 )
