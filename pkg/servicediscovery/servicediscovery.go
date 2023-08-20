@@ -22,6 +22,8 @@ func WriteServiceDiscoveryResponse(w http.ResponseWriter, sds schema.IServiceDis
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(res)
 	w.WriteHeader(http.StatusOK)
 }
