@@ -7,8 +7,9 @@ type ServiceDiscoveryClientV1 struct {
 }
 
 type ServiceDiscoveryServerV1 struct {
-	version  string
-	services ServicesV1
+	version        string
+	services       ServicesV1
+	cachedResponse []byte
 }
 
 type ServicesV1 struct {

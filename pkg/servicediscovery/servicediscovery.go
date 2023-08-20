@@ -12,6 +12,13 @@ import (
 // WriteServiceDiscoveryResponse writes the service discovery response to the HTTP response writer
 // This is used by the service discovery server to respond to HTTP GET requests
 func WriteServiceDiscoveryResponse(w http.ResponseWriter, sds schema.IServiceDiscoveryServer) {
+	if cachedResponse, exist := sds.GetCachedResponse(); exist {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(cachedResponse)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	serviceMap := schema.ServiceDiscoveryResponse{
 		Version:  sds.GetVersion(),
 		Response: sds.GetResponse(),
@@ -22,6 +29,8 @@ func WriteServiceDiscoveryResponse(w http.ResponseWriter, sds schema.IServiceDis
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	sds.CacheResponse(res)
 
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(res)

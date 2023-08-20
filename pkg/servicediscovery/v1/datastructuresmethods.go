@@ -52,6 +52,16 @@ func (sds *ServiceDiscoveryServerV1) GetVersion() string {
 	return sds.version
 }
 
+func (sds *ServiceDiscoveryServerV1) GetCachedResponse() ([]byte, bool) {
+	return sds.cachedResponse, sds.cachedResponse != nil
+}
+
+func (sds *ServiceDiscoveryServerV1) CacheResponse(response []byte) {
+	if sds.cachedResponse == nil {
+		sds.cachedResponse = response
+	}
+}
+
 func (s *ServicesV1) SetReportReceiverHttpUrl(val string) {
 	s.EventReceiverHttpUrl = val
 }

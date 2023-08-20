@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/kubescape/backend/pkg/servicediscovery/schema"
 	v1 "github.com/kubescape/backend/pkg/servicediscovery/v1"
 	"github.com/stretchr/testify/assert"
 )
+
+var _ schema.IServiceDiscoveryServer = &v1.ServiceDiscoveryServerV1{}
+var _ schema.IServiceDiscoveryClient = &v1.ServiceDiscoveryClientV1{}
 
 var testUrl string
 
@@ -15,7 +19,7 @@ func init() {
 	flag.StringVar(&testUrl, "url", "", "Service Discovery Server To Test Against")
 }
 
-func TestServiceDiscoveryV1(t *testing.T) {
+func TestServiceDiscoveryClientV1(t *testing.T) {
 	flag.Parse()
 	if testUrl == "" {
 		t.Skip("skipping test because no URL was provided")

@@ -24,4 +24,6 @@ type IServiceDiscoveryClient interface {
 type IServiceDiscoveryServer interface {
 	GetVersion() string
 	GetResponse() any
+	GetCachedResponse() ([]byte, bool)
+	CacheResponse([]byte)
 }
