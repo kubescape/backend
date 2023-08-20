@@ -1,6 +1,6 @@
 module github.com/kubescape/backend
 
-go 1.21.0
+go 1.20
 
 require (
 	github.com/armosec/armoapi-go v0.0.220
