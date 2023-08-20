@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 
@@ -33,10 +34,12 @@ func (sds *ServiceDiscoveryClientV1) GetScheme() string {
 	return sds.scheme
 }
 
-func (sds *ServiceDiscoveryClientV1) ParseResponse(response any) (schema.IBackendServices, error) {
-	if res, ok := response.(ServicesV1); ok {
-		return &res, nil
+func (sds *ServiceDiscoveryClientV1) ParseResponse(response json.RawMessage) (schema.IBackendServices, error) {
+	var services ServicesV1
+	if err := json.Unmarshal(response, &services); err == nil {
+		return &services, nil
 	}
+
 	return nil, fmt.Errorf("invalid response")
 }
 
@@ -44,8 +47,9 @@ func NewServiceDiscoveryServerV1(services ServicesV1) *ServiceDiscoveryServerV1 
 	return &ServiceDiscoveryServerV1{version: ApiVersion, services: services}
 }
 
-func (sds *ServiceDiscoveryServerV1) GetResponse() any {
-	return sds.services
+func (sds *ServiceDiscoveryServerV1) GetResponse() json.RawMessage {
+	resp, _ := json.Marshal(sds.services)
+	return resp
 }
 
 func (sds *ServiceDiscoveryServerV1) GetVersion() string {

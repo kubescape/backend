@@ -59,7 +59,7 @@ func GetServices(sdc schema.IServiceDiscoveryClient) (schema.IBackendServices, e
 		return nil, fmt.Errorf("server (%s) returned invalid version (%s)", sdc.GetHost(), serviceResponse.Version)
 	}
 
-	return sdc.ParseResponse(&serviceResponse.Response)
+	return sdc.ParseResponse(serviceResponse.Response)
 }
 
 func VersionImplementationExist(version string) bool {

@@ -1,5 +1,7 @@
 package schema
 
+import "encoding/json"
+
 type IBackendServices interface {
 	SetReportReceiverHttpUrl(string)
 	SetReportReceiverWebsocketUrl(string)
@@ -18,12 +20,12 @@ type IServiceDiscoveryClient interface {
 	GetScheme() string
 	GetPath() string
 	GetServiceDiscoveryUrl() string
-	ParseResponse(any) (IBackendServices, error)
+	ParseResponse(json.RawMessage) (IBackendServices, error)
 }
 
 type IServiceDiscoveryServer interface {
 	GetVersion() string
-	GetResponse() any
+	GetResponse() json.RawMessage
 	GetCachedResponse() ([]byte, bool)
 	CacheResponse([]byte)
 }
