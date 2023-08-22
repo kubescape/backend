@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 
 	"github.com/kubescape/backend/pkg/servicediscovery/schema"
-	"golang.org/x/tools/go/packages"
 )
+
+var supporterVersions = []string{"v1"}
 
 // WriteServiceDiscoveryResponse writes the service discovery response to the HTTP response writer
 // This is used by the service discovery server to respond to HTTP GET requests
@@ -50,19 +52,9 @@ func GetServices(getter schema.IServiceDiscoveryServiceGetter) (schema.IBackendS
 		return nil, fmt.Errorf("invalid response")
 	}
 
-	if !VersionImplementationExist(serviceResponse.Version) {
+	if !slices.Contains(supporterVersions, serviceResponse.Version) {
 		return nil, fmt.Errorf("invalid version (%s)", serviceResponse.Version)
 	}
 
 	return getter.ParseResponse(serviceResponse.Response)
-}
-
-func VersionImplementationExist(version string) bool {
-	dir := fmt.Sprintf("./%s", version)
-	cfg := &packages.Config{Mode: packages.NeedName, Dir: dir}
-	pkgs, err := packages.Load(cfg, dir)
-	if err != nil || len(pkgs) == 0 {
-		return false
-	}
-	return true
 }
