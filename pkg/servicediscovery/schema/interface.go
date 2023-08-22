@@ -1,6 +1,9 @@
 package schema
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"io"
+)
 
 type IBackendServices interface {
 	SetReportReceiverHttpUrl(string)
@@ -16,11 +19,11 @@ type IBackendServices interface {
 }
 
 type IServiceDiscoveryClient interface {
+	IServiceDiscoveryServiceGetter
 	GetHost() string
 	GetScheme() string
 	GetPath() string
 	GetServiceDiscoveryUrl() string
-	ParseResponse(json.RawMessage) (IBackendServices, error)
 }
 
 type IServiceDiscoveryServer interface {
@@ -28,4 +31,9 @@ type IServiceDiscoveryServer interface {
 	GetResponse() json.RawMessage
 	GetCachedResponse() ([]byte, bool)
 	CacheResponse([]byte)
+}
+
+type IServiceDiscoveryServiceGetter interface {
+	Get() (io.Reader, error)
+	ParseResponse(json.RawMessage) (IBackendServices, error)
 }

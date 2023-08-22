@@ -37,29 +37,24 @@ func WriteServiceDiscoveryResponse(w http.ResponseWriter, sds schema.IServiceDis
 	w.WriteHeader(http.StatusOK)
 }
 
-// GetServices returns the services from the service discovery server via HTTP GET request
-// This is used by the service discovery client to get the services from the service discovery server
-func GetServices(sdc schema.IServiceDiscoveryClient) (schema.IBackendServices, error) {
-	response, err := http.Get(sdc.GetServiceDiscoveryUrl())
+// GetServices returns the services from the provided service discovery getter
+func GetServices(getter schema.IServiceDiscoveryServiceGetter) (schema.IBackendServices, error) {
+	reader, err := getter.Get()
 	if err != nil {
 		return nil, err
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return nil, fmt.Errorf("server (%s) responded: %v", sdc.GetHost(), response.StatusCode)
-	}
-
 	var serviceResponse schema.ServiceDiscoveryResponse
-	dec := json.NewDecoder(response.Body)
+	dec := json.NewDecoder(reader)
 	if err = dec.Decode(&serviceResponse); err != nil {
-		return nil, fmt.Errorf("server (%s) returned invalid response", sdc.GetHost())
+		return nil, fmt.Errorf("invalid response")
 	}
 
 	if !VersionImplementationExist(serviceResponse.Version) {
-		return nil, fmt.Errorf("server (%s) returned invalid version (%s)", sdc.GetHost(), serviceResponse.Version)
+		return nil, fmt.Errorf("invalid version (%s)", serviceResponse.Version)
 	}
 
-	return sdc.ParseResponse(serviceResponse.Response)
+	return getter.ParseResponse(serviceResponse.Response)
 }
 
 func VersionImplementationExist(version string) bool {

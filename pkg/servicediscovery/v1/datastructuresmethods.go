@@ -1,9 +1,13 @@
 package v1
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
+	"os"
 
 	"github.com/kubescape/backend/pkg/servicediscovery/schema"
 	"github.com/kubescape/backend/pkg/utils"
@@ -41,6 +45,18 @@ func (sds *ServiceDiscoveryClientV1) ParseResponse(response json.RawMessage) (sc
 	}
 
 	return nil, fmt.Errorf("invalid response")
+}
+
+func (sds *ServiceDiscoveryClientV1) Get() (io.Reader, error) {
+	response, err := http.Get(sds.GetServiceDiscoveryUrl())
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return nil, fmt.Errorf("server (%s) responded: %v", sds.GetHost(), response.StatusCode)
+	}
+	return response.Body, nil
 }
 
 func NewServiceDiscoveryServerV1(services ServicesV1) *ServiceDiscoveryServerV1 {
@@ -104,4 +120,31 @@ func (s *ServicesV1) GetApiServerUrl() string {
 
 func (s *ServicesV1) GetMetricsUrl() string {
 	return s.MetricsUrl
+}
+
+func NewServiceDiscoveryFileV1(path string) *ServiceDiscoveryFileV1 {
+	return &ServiceDiscoveryFileV1{path: path}
+}
+
+func (s *ServiceDiscoveryFileV1) Get() (io.Reader, error) {
+	jsonFile, err := os.Open(s.path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file (%s): %v", s.path, err)
+	}
+	data, err := io.ReadAll(jsonFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file (%s): %v", s.path, err)
+	}
+	jsonFile.Close()
+
+	return bytes.NewReader(data), nil
+}
+
+func (s *ServiceDiscoveryFileV1) ParseResponse(response json.RawMessage) (schema.IBackendServices, error) {
+	var services ServicesV1
+	if err := json.Unmarshal(response, &services); err == nil {
+		return &services, nil
+	}
+
+	return nil, fmt.Errorf("invalid response")
 }
