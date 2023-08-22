@@ -10,6 +10,9 @@ const (
 	// Reporter routes
 	ReporterReportPath = "/k8s/v2/postureReport"
 
+	// Gateway routes
+	GatewayNotificationsPath = "/v1/waitfornotification"
+
 	// default dummy account ID when not defined
 	KubescapeFallbackCustomerGUID = "11111111-1111-1111-1111-111111111111"
 
