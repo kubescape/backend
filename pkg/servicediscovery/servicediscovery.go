@@ -6,8 +6,9 @@ import (
 	"net/http"
 
 	"github.com/kubescape/backend/pkg/servicediscovery/schema"
-	"golang.org/x/tools/go/packages"
 )
+
+var supporterVersions = []string{"v1"}
 
 // WriteServiceDiscoveryResponse writes the service discovery response to the HTTP response writer
 // This is used by the service discovery server to respond to HTTP GET requests
@@ -37,37 +38,31 @@ func WriteServiceDiscoveryResponse(w http.ResponseWriter, sds schema.IServiceDis
 	w.WriteHeader(http.StatusOK)
 }
 
-// GetServices returns the services from the service discovery server via HTTP GET request
-// This is used by the service discovery client to get the services from the service discovery server
-func GetServices(sdc schema.IServiceDiscoveryClient) (schema.IBackendServices, error) {
-	response, err := http.Get(sdc.GetServiceDiscoveryUrl())
+// GetServices returns the services from the provided service discovery getter
+func GetServices(getter schema.IServiceDiscoveryServiceGetter) (schema.IBackendServices, error) {
+	reader, err := getter.Get()
 	if err != nil {
 		return nil, err
 	}
 
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return nil, fmt.Errorf("server (%s) responded: %v", sdc.GetHost(), response.StatusCode)
-	}
-
 	var serviceResponse schema.ServiceDiscoveryResponse
-	dec := json.NewDecoder(response.Body)
+	dec := json.NewDecoder(reader)
 	if err = dec.Decode(&serviceResponse); err != nil {
-		return nil, fmt.Errorf("server (%s) returned invalid response", sdc.GetHost())
+		return nil, fmt.Errorf("invalid response")
 	}
 
-	if !VersionImplementationExist(serviceResponse.Version) {
-		return nil, fmt.Errorf("server (%s) returned invalid version (%s)", sdc.GetHost(), serviceResponse.Version)
+	if !isSupportedVersion(serviceResponse.Version) {
+		return nil, fmt.Errorf("invalid version (%s)", serviceResponse.Version)
 	}
 
-	return sdc.ParseResponse(serviceResponse.Response)
+	return getter.ParseResponse(serviceResponse.Response)
 }
 
-func VersionImplementationExist(version string) bool {
-	dir := fmt.Sprintf("./%s", version)
-	cfg := &packages.Config{Mode: packages.NeedName, Dir: dir}
-	pkgs, err := packages.Load(cfg, dir)
-	if err != nil || len(pkgs) == 0 {
-		return false
+func isSupportedVersion(version string) bool {
+	for _, supportedVersion := range supporterVersions {
+		if version == supportedVersion {
+			return true
+		}
 	}
-	return true
+	return false
 }

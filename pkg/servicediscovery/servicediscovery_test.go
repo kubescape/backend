@@ -25,12 +25,30 @@ func TestServiceDiscoveryClientV1(t *testing.T) {
 		t.Skip("skipping test because no URL was provided")
 	}
 
-	client := v1.NewServiceDiscoveryClientV1(testUrl)
+	client, err := v1.NewServiceDiscoveryClientV1(testUrl)
+	if err != nil {
+		t.Fatalf("failed to create client: %s", err.Error())
+	}
 	sdUrl := client.GetServiceDiscoveryUrl()
 	t.Logf("testing URL: %s", sdUrl)
 	services, err := GetServices(client)
 	if err != nil {
 		assert.FailNowf(t, fmt.Sprintf("failed to get services from url: %s (HTTP GET)", sdUrl), err.Error())
+	}
+
+	assert.NotNil(t, services)
+	assert.NotEmpty(t, services.GetApiServerUrl())
+	assert.NotEmpty(t, services.GetGatewayUrl())
+	assert.NotEmpty(t, services.GetMetricsUrl())
+	assert.NotEmpty(t, services.GetReportReceiverHttpUrl())
+	assert.NotEmpty(t, services.GetReportReceiverWebsocketUrl())
+}
+
+func TestServiceDiscoveryFileV1(t *testing.T) {
+	file := v1.NewServiceDiscoveryFileV1("testdata/v1.json")
+	services, err := GetServices(file)
+	if err != nil {
+		assert.FailNowf(t, "failed to get services from file: %s", err.Error())
 	}
 
 	assert.NotNil(t, services)

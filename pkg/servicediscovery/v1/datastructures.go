@@ -19,3 +19,7 @@ type ServicesV1 struct {
 	ApiServerUrl              string `json:"api-server"`
 	MetricsUrl                string `json:"metrics"`
 }
+
+type ServiceDiscoveryFileV1 struct {
+	path string
+}

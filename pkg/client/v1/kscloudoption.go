@@ -14,10 +14,9 @@ type (
 
 	// ksCloudOptions holds all the configurable parts of the KS Cloud client.
 	KsCloudOptions struct {
-		httpClient     *http.Client
-		cloudReportURL string
-		timeout        *time.Duration
-		withTrace      bool
+		httpClient *http.Client
+		timeout    *time.Duration
+		withTrace  bool
 	}
 
 	// request option instructs post/get/delete to alter the outgoing request
@@ -51,13 +50,6 @@ func WithTimeout(timeout time.Duration) KSCloudOption {
 
 	return func(o *KsCloudOptions) {
 		o.timeout = &duration
-	}
-}
-
-// WithReportURL specifies the URL to post reports.
-func WithReportURL(u string) KSCloudOption {
-	return func(o *KsCloudOptions) {
-		o.cloudReportURL = u
 	}
 }
 
@@ -101,24 +93,6 @@ func withContentJSON(enabled bool) requestOption {
 		o.withJSON = enabled
 	}
 }
-
-// withExtraHeaders adds extra headers to a request
-func withExtraHeaders(headers map[string]string) requestOption {
-	return func(o *requestOptions) {
-		o.headers = headers
-	}
-}
-
-/* not used yet
-// withContext sets the context of a request.
-//
-// By default, context.Background() is used.
-func withContext(ctx context.Context) requestOption {
-	return func(o *requestOptions) {
-		o.reqContext = ctx
-	}
-}
-*/
 
 // withTrace dumps requests for debugging
 func withTrace(enabled bool) requestOption {

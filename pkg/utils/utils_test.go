@@ -14,7 +14,8 @@ func TestParseHost(t *testing.T) {
 		t.Parallel()
 
 		const input = "http://localhost:7555"
-		scheme, host := ParseHost(input)
+		scheme, host, err := ParseHost(input)
+		require.NoError(t, err)
 		require.Equal(t, "http", scheme)
 		require.Equal(t, "localhost:7555", host)
 	})
@@ -23,7 +24,8 @@ func TestParseHost(t *testing.T) {
 		t.Parallel()
 
 		const input = "https://localhost:7555"
-		scheme, host := ParseHost(input)
+		scheme, host, err := ParseHost(input)
+		require.NoError(t, err)
 		require.Equal(t, "https", scheme)
 		require.Equal(t, "localhost:7555", host)
 	})
@@ -32,7 +34,8 @@ func TestParseHost(t *testing.T) {
 		t.Parallel()
 
 		const input = "portal-dev.armo.cloud"
-		scheme, host := ParseHost(input)
+		scheme, host, err := ParseHost(input)
+		require.NoError(t, err)
 		require.Equal(t, "https", scheme)
 		require.Equal(t, "portal-dev.armo.cloud", host)
 	})

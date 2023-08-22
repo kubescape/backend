@@ -4,10 +4,12 @@ go 1.20
 
 require (
 	github.com/armosec/armoapi-go v0.0.220
+	github.com/armosec/utils-go v0.0.20
+	github.com/francoispqt/gojay v1.2.13
+	github.com/google/uuid v1.3.0
 	github.com/json-iterator/go v1.1.12
 	github.com/kubescape/opa-utils v0.0.266
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/tools v0.9.1
 )
 
 require (
@@ -24,7 +26,6 @@ require (
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/armosec/gojay v1.2.15 // indirect
-	github.com/armosec/utils-go v0.0.20 // indirect
 	github.com/armosec/utils-k8s-go v0.0.16 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.19.1 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.18.30 // indirect
@@ -51,7 +52,6 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
 	github.com/fatih/color v1.15.0 // indirect
-	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
@@ -68,7 +68,6 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/s2a-go v0.1.4 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.11.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
@@ -129,7 +128,6 @@ require (
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.11.0 // indirect
 	golang.org/x/exp v0.0.0-20230728194245-b0cb94b80691 // indirect
-	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/net v0.12.0 // indirect
 	golang.org/x/oauth2 v0.10.0 // indirect
 	golang.org/x/sys v0.10.0 // indirect
