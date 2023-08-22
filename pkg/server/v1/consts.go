@@ -11,6 +11,7 @@ const (
 	// Reporter routes
 	ReporterReportPath                = "/k8s/v2/postureReport" // TODO: rename to postureReport
 	ReporterVulnerabilitiesReportPath = "/k8s/v2/containerScan"
+	ReporterSystemReportPath          = "/k8s/sysreport"
 
 	// Gateway routes
 	GatewayNotificationsPath = "/v1/waitfornotification"
