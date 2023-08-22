@@ -60,7 +60,7 @@ func getCVEExceptionByDEsignator(backendURL string, designators *identifiers.Por
 	return vulnerabilityExceptionPolicy, nil
 }
 
-func GetCVEExceptionByDesignator(baseURL string, cusGUID string, designators *identifiers.PortalDesignator) ([]armotypes.VulnerabilityExceptionPolicy, error) {
+func GetCVEExceptionByDesignator(baseURL string, designators *identifiers.PortalDesignator) ([]armotypes.VulnerabilityExceptionPolicy, error) {
 	vulnerabilityExceptionPolicyList, err := getCVEExceptionByDEsignator(baseURL, designators)
 	if err != nil {
 		return nil, err
