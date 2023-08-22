@@ -7,7 +7,6 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/kubescape/opa-utils v0.0.266
 	github.com/stretchr/testify v1.8.4
-	golang.org/x/tools v0.9.1
 )
 
 require (
@@ -129,7 +128,6 @@ require (
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.11.0 // indirect
 	golang.org/x/exp v0.0.0-20230728194245-b0cb94b80691 // indirect
-	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/net v0.12.0 // indirect
 	golang.org/x/oauth2 v0.10.0 // indirect
 	golang.org/x/sys v0.10.0 // indirect

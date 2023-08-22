@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"slices"
 
 	"github.com/kubescape/backend/pkg/servicediscovery/schema"
 )
@@ -52,9 +51,18 @@ func GetServices(getter schema.IServiceDiscoveryServiceGetter) (schema.IBackendS
 		return nil, fmt.Errorf("invalid response")
 	}
 
-	if !slices.Contains(supporterVersions, serviceResponse.Version) {
+	if !isSupportedVersion(serviceResponse.Version) {
 		return nil, fmt.Errorf("invalid version (%s)", serviceResponse.Version)
 	}
 
 	return getter.ParseResponse(serviceResponse.Response)
+}
+
+func isSupportedVersion(version string) bool {
+	for _, supportedVersion := range supporterVersions {
+		if version == supportedVersion {
+			return true
+		}
+	}
+	return false
 }
