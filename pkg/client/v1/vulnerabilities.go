@@ -14,7 +14,7 @@ import (
 	"github.com/kubescape/backend/pkg/utils"
 )
 
-func getCVEExceptionsURL(backendURL string, cusGUID string, designators *identifiers.PortalDesignator) (*url.URL, error) {
+func getCVEExceptionsURL(backendURL string, designators *identifiers.PortalDesignator) (*url.URL, error) {
 	scheme, host := utils.ParseHost(backendURL)
 	expURL := &url.URL{
 		Host:   host,
@@ -29,11 +29,11 @@ func getCVEExceptionsURL(backendURL string, cusGUID string, designators *identif
 	return expURL, nil
 }
 
-func getCVEExceptionByDEsignator(backendURL string, cusGUID string, designators *identifiers.PortalDesignator) ([]armotypes.VulnerabilityExceptionPolicy, error) {
+func getCVEExceptionByDEsignator(backendURL string, designators *identifiers.PortalDesignator) ([]armotypes.VulnerabilityExceptionPolicy, error) {
 
 	var vulnerabilityExceptionPolicy []armotypes.VulnerabilityExceptionPolicy
 
-	url, err := getCVEExceptionsURL(backendURL, cusGUID, designators)
+	url, err := getCVEExceptionsURL(backendURL, designators)
 	if err != nil {
 		return nil, err
 	}
@@ -61,9 +61,22 @@ func getCVEExceptionByDEsignator(backendURL string, cusGUID string, designators 
 }
 
 func GetCVEExceptionByDesignator(baseURL string, cusGUID string, designators *identifiers.PortalDesignator) ([]armotypes.VulnerabilityExceptionPolicy, error) {
-	vulnerabilityExceptionPolicyList, err := getCVEExceptionByDEsignator(baseURL, cusGUID, designators)
+	vulnerabilityExceptionPolicyList, err := getCVEExceptionByDEsignator(baseURL, designators)
 	if err != nil {
 		return nil, err
 	}
 	return vulnerabilityExceptionPolicyList, nil
+}
+
+func GetVulnerabilitiesReportURL(eventReceiverUrl, customerGUID string) *url.URL {
+	scheme, host := utils.ParseHost(eventReceiverUrl)
+	urlBase := &url.URL{
+		Host:   host,
+		Scheme: scheme,
+		Path:   v1.ReporterVulnerabilitiesReportPath,
+	}
+	q := urlBase.Query()
+	q.Add(armotypes.CustomerGuidQuery, customerGUID)
+	urlBase.RawQuery = q.Encode()
+	return urlBase
 }

@@ -9,7 +9,8 @@ const (
 	ApiServerVulnerabilitiesExceptionsPath = "/api/v1/vulnerabilitiesExceptions"
 
 	// Reporter routes
-	ReporterReportPath = "/k8s/v2/postureReport"
+	ReporterReportPath                = "/k8s/v2/postureReport" // TODO: rename to postureReport
+	ReporterVulnerabilitiesReportPath = "/k8s/v2/containerScan"
 
 	// Gateway routes
 	GatewayNotificationsPath = "/v1/waitfornotification"
