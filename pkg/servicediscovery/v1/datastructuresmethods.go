@@ -13,9 +13,12 @@ import (
 	"github.com/kubescape/backend/pkg/utils"
 )
 
-func NewServiceDiscoveryClientV1(url string) *ServiceDiscoveryClientV1 {
-	scheme, host := utils.ParseHost(url)
-	return &ServiceDiscoveryClientV1{scheme: scheme, host: host, path: ServiceDiscoveryPathV1}
+func NewServiceDiscoveryClientV1(url string) (*ServiceDiscoveryClientV1, error) {
+	scheme, host, err := utils.ParseHost(url)
+	if err != nil {
+		return nil, err
+	}
+	return &ServiceDiscoveryClientV1{scheme: scheme, host: host, path: ServiceDiscoveryPathV1}, nil
 }
 
 func (sds *ServiceDiscoveryClientV1) GetServiceDiscoveryUrl() string {

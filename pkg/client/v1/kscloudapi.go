@@ -108,12 +108,12 @@ func (api *KSCloudAPI) SetAccountID(accountID string) { api.accountID = accountI
 
 func (api *KSCloudAPI) SetCloudAPIURL(cloudAPIURL string) {
 	api.cloudAPIURL = cloudAPIURL
-	api.scheme, api.host = utils.ParseHost(cloudAPIURL)
+	api.scheme, api.host, _ = utils.ParseHost(cloudAPIURL)
 }
 
 func (api *KSCloudAPI) SetCloudReportURL(cloudReportURL string) {
 	api.cloudReportURL = cloudReportURL
-	api.reportscheme, api.reporthost = utils.ParseHost(cloudReportURL)
+	api.reportscheme, api.reporthost, _ = utils.ParseHost(cloudReportURL)
 }
 
 func (api *KSCloudAPI) GetAttackTracks() ([]AttackTrack, error) {

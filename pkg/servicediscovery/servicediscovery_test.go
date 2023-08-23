@@ -25,7 +25,10 @@ func TestServiceDiscoveryClientV1(t *testing.T) {
 		t.Skip("skipping test because no URL was provided")
 	}
 
-	client := v1.NewServiceDiscoveryClientV1(testUrl)
+	client, err := v1.NewServiceDiscoveryClientV1(testUrl)
+	if err != nil {
+		t.Fatalf("failed to create client: %s", err.Error())
+	}
 	sdUrl := client.GetServiceDiscoveryUrl()
 	t.Logf("testing URL: %s", sdUrl)
 	services, err := GetServices(client)

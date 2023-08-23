@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -25,13 +26,26 @@ func ReadString(rdr io.Reader, sizeHint int64) (string, error) {
 // ParseHost picks a host from a hostname or an URL and detects the scheme.
 //
 // The default scheme is https. This may be altered by specifying an explicit http://hostname URL.
-func ParseHost(host string) (string, string) {
+func ParseHost(host string) (string, string, error) {
+	_, err := url.Parse(host)
+	if err != nil {
+		return "", "", err
+	}
+
+	if strings.HasPrefix(host, "ws://") {
+		return "ws", strings.Replace(host, "ws://", "", 1), nil
+	}
+
+	if strings.HasPrefix(host, "wss://") {
+		return "wss", strings.Replace(host, "wss://", "", 1), nil
+	}
+
 	if strings.HasPrefix(host, "http://") {
-		return "http", strings.Replace(host, "http://", "", 1) // cut... index ...
+		return "http", strings.Replace(host, "http://", "", 1), nil
 	}
 
 	// default scheme
-	return "https", strings.Replace(host, "https://", "", 1)
+	return "https", strings.Replace(host, "https://", "", 1), nil
 }
 
 // ErrAPI reports an API error, with a cap on the length of the error message.

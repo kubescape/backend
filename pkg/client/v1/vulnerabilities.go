@@ -15,7 +15,10 @@ import (
 )
 
 func getCVEExceptionsURL(backendURL, customerGUID string, designators *identifiers.PortalDesignator) (*url.URL, error) {
-	scheme, host := utils.ParseHost(backendURL)
+	scheme, host, err := utils.ParseHost(backendURL)
+	if err != nil {
+		return nil, err
+	}
 	expURL := &url.URL{
 		Host:   host,
 		Scheme: scheme,
@@ -70,8 +73,12 @@ func GetCVEExceptionByDesignator(baseURL, customerGUID string, designators *iden
 	return vulnerabilityExceptionPolicyList, nil
 }
 
-func GetVulnerabilitiesReportURL(eventReceiverUrl, customerGUID string) *url.URL {
-	scheme, host := utils.ParseHost(eventReceiverUrl)
+func GetVulnerabilitiesReportURL(eventReceiverUrl, customerGUID string) (*url.URL, error) {
+	scheme, host, err := utils.ParseHost(eventReceiverUrl)
+	if err != nil {
+		return nil, err
+	}
+
 	urlBase := &url.URL{
 		Host:   host,
 		Scheme: scheme,
@@ -80,15 +87,18 @@ func GetVulnerabilitiesReportURL(eventReceiverUrl, customerGUID string) *url.URL
 	q := urlBase.Query()
 	q.Add(armotypes.CustomerGuidQuery, customerGUID)
 	urlBase.RawQuery = q.Encode()
-	return urlBase
+	return urlBase, nil
 }
 
-func GetSystemReportURL(eventReceiverUrl string) *url.URL {
-	scheme, host := utils.ParseHost(eventReceiverUrl)
+func GetSystemReportURL(eventReceiverUrl string) (*url.URL, error) {
+	scheme, host, err := utils.ParseHost(eventReceiverUrl)
+	if err != nil {
+		return nil, err
+	}
 	urlBase := &url.URL{
 		Host:   host,
 		Scheme: scheme,
 		Path:   v1.ReporterSystemReportPath,
 	}
-	return urlBase
+	return urlBase, nil
 }
