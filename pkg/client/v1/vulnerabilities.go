@@ -14,7 +14,7 @@ import (
 	"github.com/kubescape/backend/pkg/utils"
 )
 
-func getCVEExceptionsURL(backendURL string, designators *identifiers.PortalDesignator) (*url.URL, error) {
+func getCVEExceptionsURL(backendURL, customerGUID string, designators *identifiers.PortalDesignator) (*url.URL, error) {
 	scheme, host := utils.ParseHost(backendURL)
 	expURL := &url.URL{
 		Host:   host,
@@ -25,15 +25,17 @@ func getCVEExceptionsURL(backendURL string, designators *identifiers.PortalDesig
 	for k, v := range designators.Attributes {
 		qValues.Add(k, v)
 	}
+	qValues.Add(v1.QueryParamCustomerGUID, customerGUID)
+
 	expURL.RawQuery = qValues.Encode()
 	return expURL, nil
 }
 
-func getCVEExceptionByDEsignator(backendURL string, designators *identifiers.PortalDesignator) ([]armotypes.VulnerabilityExceptionPolicy, error) {
+func getCVEExceptionByDEsignator(backendURL, customerGUID string, designators *identifiers.PortalDesignator) ([]armotypes.VulnerabilityExceptionPolicy, error) {
 
 	var vulnerabilityExceptionPolicy []armotypes.VulnerabilityExceptionPolicy
 
-	url, err := getCVEExceptionsURL(backendURL, designators)
+	url, err := getCVEExceptionsURL(backendURL, customerGUID, designators)
 	if err != nil {
 		return nil, err
 	}
@@ -60,8 +62,8 @@ func getCVEExceptionByDEsignator(backendURL string, designators *identifiers.Por
 	return vulnerabilityExceptionPolicy, nil
 }
 
-func GetCVEExceptionByDesignator(baseURL string, designators *identifiers.PortalDesignator) ([]armotypes.VulnerabilityExceptionPolicy, error) {
-	vulnerabilityExceptionPolicyList, err := getCVEExceptionByDEsignator(baseURL, designators)
+func GetCVEExceptionByDesignator(baseURL, customerGUID string, designators *identifiers.PortalDesignator) ([]armotypes.VulnerabilityExceptionPolicy, error) {
+	vulnerabilityExceptionPolicyList, err := getCVEExceptionByDEsignator(baseURL, customerGUID, designators)
 	if err != nil {
 		return nil, err
 	}

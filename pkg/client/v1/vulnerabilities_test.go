@@ -8,13 +8,13 @@ import (
 )
 
 func Test_getCVEExceptionsURL(t *testing.T) {
-	url, err := getCVEExceptionsURL("http://localhost:8080", &identifiers.PortalDesignator{
+	url, err := getCVEExceptionsURL("http://localhost:8080", "abc", &identifiers.PortalDesignator{
 		Attributes: map[string]string{
-			identifiers.AttributeCustomerGUID: "test123",
+			"key1": "val2",
 		},
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, "http://localhost:8080/api/v1/vulnerabilitiesExceptions?customerGUID=test123", url.String())
+	assert.Equal(t, "http://localhost:8080/api/v1/vulnerabilitiesExceptions?customerGUID=abc&key1=val2", url.String())
 }
 
 func Test_GetVulnerabilitiesReportURL(t *testing.T) {
