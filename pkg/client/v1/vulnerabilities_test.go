@@ -14,7 +14,7 @@ func Test_getCVEExceptionsURL(t *testing.T) {
 		},
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, "http://localhost:8080/api/v1/vulnerabilitiesExceptions?customerGUID=abc&key1=val2", url.String())
+	assert.Equal(t, "http://localhost:8080/api/v1/armoVulnerabilityExceptions?customerGUID=abc&key1=val2", url.String())
 }
 
 func Test_GetVulnerabilitiesReportURL(t *testing.T) {

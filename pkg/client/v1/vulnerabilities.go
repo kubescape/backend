@@ -19,7 +19,7 @@ func getCVEExceptionsURL(backendURL, customerGUID string, designators *identifie
 	expURL := &url.URL{
 		Host:   host,
 		Scheme: scheme,
-		Path:   v1.ApiServerVulnerabilitiesExceptionsPath,
+		Path:   v1.ApiServerVulnerabilitiesExceptionsPathOld,
 	}
 	qValues := expURL.Query()
 	for k, v := range designators.Attributes {

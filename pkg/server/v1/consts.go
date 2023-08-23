@@ -2,11 +2,12 @@ package v1
 
 const (
 	// API routes
-	ApiServerAttackTracksPath              = "/api/v1/attackTracks"
-	ApiServerFrameworksPath                = "/api/v1/frameworks"
-	ApiServerExceptionsPath                = "/api/v1/controlExceptions" // TODO: rename to controlExceptions
-	ApiServerCustomerConfigPath            = "/api/v1/customerConfig"
-	ApiServerVulnerabilitiesExceptionsPath = "/api/v1/vulnerabilitiesExceptions"
+	ApiServerAttackTracksPath                 = "/api/v1/attackTracks"
+	ApiServerFrameworksPath                   = "/api/v1/frameworks"
+	ApiServerExceptionsPath                   = "/api/v1/controlExceptions" // TODO: rename to controlExceptions
+	ApiServerCustomerConfigPath               = "/api/v1/customerConfig"
+	ApiServerVulnerabilitiesExceptionsPathOld = "/api/v1/armoVulnerabilityExceptions"
+	ApiServerVulnerabilitiesExceptionsPath    = "/api/v1/vulnerabilityExceptions"
 
 	// Reporter routes
 	ReporterReportPath                = "/k8s/v2/postureReport" // TODO: rename to postureReport
