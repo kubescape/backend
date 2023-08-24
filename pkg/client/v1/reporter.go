@@ -53,7 +53,7 @@ func GetRegistryRepositoriesUrl(eventReceiverRestUrl, customerGUID, registryName
 	return urlQuery, nil
 }
 
-func GetPostureReportUrl(eventReceiverRestUrl, customerGUID, contextName string) (*url.URL, error) {
+func GetPostureReportUrl(eventReceiverRestUrl, customerGUID, contextName, reportID string) (*url.URL, error) {
 	scheme, host, err := utils.ParseHost(eventReceiverRestUrl)
 	if err != nil {
 		return nil, err
@@ -69,7 +69,7 @@ func GetPostureReportUrl(eventReceiverRestUrl, customerGUID, contextName string)
 	q.Add(v1.QueryParamCustomerGUID, uuid.MustParse(customerGUID).String())
 	q.Add(v1.QueryParamContextName, contextName)
 	q.Add(v1.QueryParamClusterName, contextName) // deprecated
-
+	q.Add(v1.QueryParamReport, reportID)         // TODO - do we add the reportID?
 	urlObj.RawQuery = q.Encode()
 
 	return &urlObj, nil
