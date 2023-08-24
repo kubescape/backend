@@ -20,3 +20,13 @@ func Test_GetRegistryRepositoriesUrl(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "https://some-host/k8s/registryRepositories?customerGUID=00000-aaaaa&jobID=1234&registryName=quay.io", url.String())
 }
+
+func Test_GetPostureReportUrl(t *testing.T) {
+	assert.Panics(t, func() {
+		_, _ = GetPostureReportUrl("https://some-host", "invalid-customer-uuid", "cluster-123")
+	})
+
+	url, err := GetPostureReportUrl("https://some-host", "11111111-1111-1111-1111-111111111111", "cluster-123")
+	assert.NoError(t, err)
+	assert.Equal(t, "https://some-host/k8s/v2/postureReport?clusterName=cluster-123&contextName=cluster-123&customerGUID=11111111-1111-1111-1111-111111111111", url.String())
+}

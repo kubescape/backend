@@ -3,6 +3,7 @@ package v1
 import (
 	"net/url"
 
+	"github.com/google/uuid"
 	v1 "github.com/kubescape/backend/pkg/server/v1"
 	"github.com/kubescape/backend/pkg/utils"
 )
@@ -50,4 +51,26 @@ func GetRegistryRepositoriesUrl(eventReceiverRestUrl, customerGUID, registryName
 	}
 	urlQuery.RawQuery = query.Encode()
 	return urlQuery, nil
+}
+
+func GetPostureReportUrl(eventReceiverRestUrl, customerGUID, contextName string) (*url.URL, error) {
+	scheme, host, err := utils.ParseHost(eventReceiverRestUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	urlObj := url.URL{
+		Scheme: scheme,
+		Host:   host,
+		Path:   v1.ReporterReportPath,
+	}
+
+	q := urlObj.Query()
+	q.Add(v1.QueryParamCustomerGUID, uuid.MustParse(customerGUID).String())
+	q.Add(v1.QueryParamContextName, contextName)
+	q.Add(v1.QueryParamClusterName, contextName) // deprecated
+
+	urlObj.RawQuery = q.Encode()
+
+	return &urlObj, nil
 }
