@@ -9,10 +9,11 @@ import (
 func TestBuildURL(t *testing.T) {
 	t.Parallel()
 
-	ks := NewKSCloudAPICustomized(
-		"api.example.com",                   // required
-		WithReportURL("report.example.com"), // optional
+	ks, err := NewKSCloudAPI(
+		"api.example.com",
+		"report.example.com",
 	)
+	require.NoError(t, err)
 
 	t.Run("should build API URL with query params on https host", func(t *testing.T) {
 		require.Equal(t,
@@ -22,8 +23,9 @@ func TestBuildURL(t *testing.T) {
 	})
 
 	t.Run("should build API URL with query params on http host", func(t *testing.T) {
-		ku := NewKSCloudAPICustomized("http://api.example.com")
+		ku, err := NewKSCloudAPI("http://api.example.com", "")
 
+		require.NoError(t, err)
 		require.Equal(t,
 			"http://api.example.com/path?q1=v1&q2=v2",
 			ku.buildAPIURL("/path", "q1", "v1", "q2", "v2"),
@@ -48,9 +50,10 @@ func TestBuildURL(t *testing.T) {
 func TestViewURL(t *testing.T) {
 	t.Parallel()
 
-	ks := NewKSCloudAPICustomized(
-		"api.example.com",                   // required
-		WithReportURL("report.example.com"), // optional
+	ks, err := NewKSCloudAPI(
+		"api.example.com",
+		"report.example.com",
 	)
+	require.NoError(t, err)
 	ks.SetAccountID("me")
 }

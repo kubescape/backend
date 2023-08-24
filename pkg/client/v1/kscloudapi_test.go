@@ -23,7 +23,7 @@ var (
 
 func TestFallBackGUID(t *testing.T) {
 	t.Run("should yield a GUID even though the account ID is not set", func(t *testing.T) {
-		ks := NewKSCloudAPICustomized("")
+		ks := NewEmptyKSCloudAPI()
 		require.NotEmpty(t, ks.getCustomerGUIDFallBack())
 	})
 }
@@ -36,13 +36,15 @@ func TestKSCloudAPI(t *testing.T) {
 	srv := MockAPIServer(t) // assert that a token is passed as header
 	t.Cleanup(srv.Close)
 
-	ks := NewKSCloudAPICustomized(
-		srv.Root(), // BEURL: API URL
+	ks, err := NewKSCloudAPI(
+		srv.Root(),
+		srv.Root(),
 		append(
 			testOptions,
-			WithReportURL(srv.Root()),
 		)...,
 	)
+	require.NoError(t, err)
+
 	ks.SetAccountID("armo")
 	hdrs := map[string]string{"key": "value"}
 	body := []byte("body-post")
@@ -226,9 +228,11 @@ func TestKSCloudAPI(t *testing.T) {
 			t.Run("empty CustomerConfig", func(t *testing.T) {
 				t.Parallel()
 
-				kno := NewKSCloudAPICustomized(
+				kno, err := NewKSCloudAPI(
 					srv.Root(),
+					"",
 				)
+				require.NoError(t, err)
 
 				account, err := kno.GetAccountConfig("")
 				require.NoError(t, err)
@@ -325,11 +329,12 @@ func TestKSCloudAPI(t *testing.T) {
 		defer func() {
 			log.SetOutput(os.Stderr)
 		}()
-		kt := NewKSCloudAPICustomized(srv.Root(),
+		kt, err := NewKSCloudAPI(srv.Root(), "",
 			WithHTTPClient(&http.Client{}),
 			WithTimeout(500*time.Millisecond),
 			WithTrace(true),
 		)
+		require.NoError(t, err)
 		kt.SetAccountID("armo")
 
 		resp, err := kt.Post(srv.URL(pathTestPost), hdrs, body)
@@ -339,11 +344,12 @@ func TestKSCloudAPI(t *testing.T) {
 	})
 
 	t.Run("with getters & setters", func(t *testing.T) {
-		t.Parallel()
 
-		kno := NewKSCloudAPICustomized(
+		kno, err := NewKSCloudAPI(
 			srv.Root(),
+			"",
 		)
+		require.NoError(t, err)
 
 		pickString := func() string {
 			return strconv.Itoa(rand.Intn(10000)) //nolint:gosec
@@ -355,15 +361,31 @@ func TestKSCloudAPI(t *testing.T) {
 			require.Equal(t, str, kno.GetAccountID())
 		})
 
+		t.Run("shouldn't set invalid report URL", func(t *testing.T) {
+			malformedUrl := "http://%41:8080/"
+			err := kno.SetCloudReportURL(malformedUrl)
+			require.Error(t, err)
+			require.Equal(t, "", kno.GetCloudReportURL())
+		})
+
+		t.Run("shouldn't set invalid API URL", func(t *testing.T) {
+			malformedUrl := "http://%41:8080/"
+			err := kno.SetCloudAPIURL(malformedUrl)
+			require.Error(t, err)
+			require.Equal(t, "", kno.GetCloudAPIURL())
+		})
+
 		t.Run("should get&set report URL", func(t *testing.T) {
-			str := pickString()
-			kno.SetCloudReportURL(str)
+			str := "https://report.example.com"
+			err := kno.SetCloudReportURL(str)
+			require.NoError(t, err)
 			require.Equal(t, str, kno.GetCloudReportURL())
 		})
 
 		t.Run("should get&set API URL", func(t *testing.T) {
-			str := pickString()
-			kno.SetCloudAPIURL(str)
+			str := "https://api.example.com"
+			err := kno.SetCloudAPIURL(str)
+			require.NoError(t, err)
 			require.Equal(t, str, kno.GetCloudAPIURL())
 		})
 	})
@@ -376,9 +398,11 @@ func TestKSCloudAPI(t *testing.T) {
 		errSrv := MockAPIServer(t, withAPIError(errAPI))
 		t.Cleanup(errSrv.Close)
 
-		ke := NewKSCloudAPICustomized(
+		ke, err := NewKSCloudAPI(
 			errSrv.Root(),
+			"",
 		)
+		require.NoError(t, err)
 		ke.SetAccountID("armo")
 
 		hdrs := map[string]string{"key": "value"}
@@ -438,9 +462,11 @@ func TestKSCloudAPI(t *testing.T) {
 		errSrv := MockAPIServer(t, withAPIGarbled(true))
 		t.Cleanup(errSrv.Close)
 
-		ke := NewKSCloudAPICustomized(
+		ke, err := NewKSCloudAPI(
 			errSrv.Root(),
+			"",
 		)
+		require.NoError(t, err)
 		ke.SetAccountID("armo")
 
 		t.Run("API calls should return unmarshalling error", func(t *testing.T) {

@@ -19,32 +19,36 @@ var (
 // KSCloudAPI allows to access the API of the Kubescape Cloud offering.
 type KSCloudAPI struct {
 	*KsCloudOptions
-	cloudAPIURL  string
 	accountID    string
-	reportscheme string
-	reporthost   string
-	scheme       string
-	host         string
+	apiHost      string
+	apiScheme    string
+	reportHost   string
+	reportScheme string
 }
 
-// NewKSCloudAPICustomed returns a KS Cloud client with configurable API and authentication endpoints.
-func NewKSCloudAPICustomized(ksCloudAPIURL string, opts ...KSCloudOption) *KSCloudAPI {
-	return NewKSCloudAPI(
-		ksCloudAPIURL,
-		opts...,
-	)
-}
-
-func NewKSCloudAPI(apiURL string, opts ...KSCloudOption) *KSCloudAPI {
+// NewEmptyKSCloudAPI creates a new KSCloudAPI without any hosts set.
+func NewEmptyKSCloudAPI(opts ...KSCloudOption) *KSCloudAPI {
 	api := &KSCloudAPI{
-		cloudAPIURL:    apiURL,
 		KsCloudOptions: ksCloudOptionsWithDefaults(opts),
 	}
 
-	api.SetCloudAPIURL(apiURL)
-	api.SetCloudReportURL(api.cloudReportURL)
-
 	return api
+}
+
+func NewKSCloudAPI(apiURL, reportURL string, opts ...KSCloudOption) (*KSCloudAPI, error) {
+	api := &KSCloudAPI{
+		KsCloudOptions: ksCloudOptionsWithDefaults(opts),
+	}
+
+	if err := api.SetCloudAPIURL(apiURL); err != nil {
+		return nil, err
+	}
+
+	if err := api.SetCloudReportURL(reportURL); err != nil {
+		return nil, err
+	}
+
+	return api, nil
 }
 
 // Get retrieves an API resource.
@@ -101,19 +105,38 @@ func (api *KSCloudAPI) Delete(fullURL string, headers map[string]string) (string
 // GetAccountID returns the customer account's GUID.
 func (api *KSCloudAPI) GetAccountID() string { return api.accountID }
 
-func (api *KSCloudAPI) GetCloudReportURL() string { return api.cloudReportURL }
-func (api *KSCloudAPI) GetCloudAPIURL() string    { return api.cloudAPIURL }
+func (api *KSCloudAPI) GetCloudReportURL() string {
+	if api.reportHost == "" {
+		return ""
+	}
+
+	return api.reportScheme + "://" + api.reportHost
+}
+
+func (api *KSCloudAPI) GetCloudAPIURL() string {
+	if api.apiHost == "" {
+		return ""
+	}
+	return api.apiScheme + "://" + api.apiHost
+}
 
 func (api *KSCloudAPI) SetAccountID(accountID string) { api.accountID = accountID }
 
-func (api *KSCloudAPI) SetCloudAPIURL(cloudAPIURL string) {
-	api.cloudAPIURL = cloudAPIURL
-	api.scheme, api.host, _ = utils.ParseHost(cloudAPIURL)
+func (api *KSCloudAPI) SetCloudAPIURL(cloudAPIURL string) (err error) {
+	if cloudAPIURL == "" {
+		return nil
+	}
+	api.apiScheme, api.apiHost, err = utils.ParseHost(cloudAPIURL)
+	return err
 }
 
-func (api *KSCloudAPI) SetCloudReportURL(cloudReportURL string) {
-	api.cloudReportURL = cloudReportURL
-	api.reportscheme, api.reporthost, _ = utils.ParseHost(cloudReportURL)
+func (api *KSCloudAPI) SetCloudReportURL(cloudReportURL string) (err error) {
+	if cloudReportURL == "" {
+		return nil
+	}
+
+	api.reportScheme, api.reportHost, err = utils.ParseHost(cloudReportURL)
+	return err
 }
 
 func (api *KSCloudAPI) GetAttackTracks() ([]AttackTrack, error) {
