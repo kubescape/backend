@@ -31,3 +31,23 @@ func GetReporterClusterReportsWebsocketUrl(eventReceiverWebsocketUrl, accountID,
 
 	return u, nil
 }
+
+func GetRegistryRepositoriesUrl(eventReceiverRestUrl, customerGUID, registryName, jobID string) (*url.URL, error) {
+	scheme, host, err := utils.ParseHost(eventReceiverRestUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	urlQuery := &url.URL{
+		Scheme: scheme,
+		Host:   host,
+		Path:   "k8s/registryRepositories",
+	}
+	query := url.Values{
+		v1.QueryParamJobID:        []string{jobID},
+		v1.QueryParamCustomerGUID: []string{customerGUID},
+		v1.QueryParamRegistryName: []string{registryName},
+	}
+	urlQuery.RawQuery = query.Encode()
+	return urlQuery, nil
+}

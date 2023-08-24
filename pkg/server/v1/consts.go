@@ -29,4 +29,6 @@ const (
 	QueryParamClusterName   = "clusterName"
 	QueryParamContextName   = "contextName"
 	QueryParamReport        = "reportGUID"
+	QueryParamJobID         = "jobID"
+	QueryParamRegistryName  = "registryName"
 )
