@@ -16,6 +16,16 @@ var (
 	ErrAPINotPublic = errors.New("control api is not public")
 )
 
+// IBackend knows how to configure a KS Cloud client
+type IKubescapeBackend interface {
+	GetAccountID() string
+	GetCloudReportURL() string
+	GetCloudAPIURL() string
+	SetAccountID(accountID string)
+	SetCloudReportURL(cloudReportURL string) error
+	SetCloudAPIURL(cloudAPIURL string) error
+}
+
 // KSCloudAPI allows to access the API of the Kubescape Cloud offering.
 type KSCloudAPI struct {
 	*KsCloudOptions
@@ -49,57 +59,6 @@ func NewKSCloudAPI(apiURL, reportURL string, opts ...KSCloudOption) (*KSCloudAPI
 	}
 
 	return api, nil
-}
-
-// Get retrieves an API resource.
-//
-// The response is serialized as a string.
-//
-// The caller may specify extra headers.
-//
-// By default, all authentication headers are added.
-func (api *KSCloudAPI) Get(fullURL string, headers map[string]string) (string, error) {
-	rdr, size, err := api.get(fullURL, withExtraHeaders(headers))
-	if err != nil {
-		return "", err
-	}
-	defer rdr.Close()
-
-	return utils.ReadString(rdr, size)
-}
-
-// Post creates an API resource.
-//
-// The response is serialized as a string.
-//
-// The caller may specify extra headers.
-//
-// By default, the body content type is set to JSON and all authentication headers are added.
-func (api *KSCloudAPI) Post(fullURL string, headers map[string]string, body []byte) (string, error) {
-	rdr, size, err := api.post(fullURL, body, withContentJSON(true), withExtraHeaders(headers))
-	if err != nil {
-		return "", err
-	}
-	defer rdr.Close()
-
-	return utils.ReadString(rdr, size)
-}
-
-// Delete an API resource.
-//
-// The response is serialized as a string.
-//
-// The caller may specify extra headers.
-//
-// By default, all authentication headers are added.
-func (api *KSCloudAPI) Delete(fullURL string, headers map[string]string) (string, error) {
-	rdr, size, err := api.delete(fullURL, withExtraHeaders(headers))
-	if err != nil {
-		return "", err
-	}
-	defer rdr.Close()
-
-	return utils.ReadString(rdr, size)
 }
 
 // GetAccountID returns the customer account's GUID.
@@ -410,15 +369,15 @@ func (api *KSCloudAPI) post(fullURL string, body []byte, opts ...requestOption) 
 	return api.do(req, o)
 }
 
-func (api *KSCloudAPI) delete(fullURL string, opts ...requestOption) (io.ReadCloser, int64, error) {
-	o := api.defaultRequestOptions(opts)
-	req, err := http.NewRequestWithContext(o.reqContext, http.MethodDelete, fullURL, nil)
-	if err != nil {
-		return nil, 0, err
-	}
+// func (api *KSCloudAPI) delete(fullURL string, opts ...requestOption) (io.ReadCloser, int64, error) {
+// 	o := api.defaultRequestOptions(opts)
+// 	req, err := http.NewRequestWithContext(o.reqContext, http.MethodDelete, fullURL, nil)
+// 	if err != nil {
+// 		return nil, 0, err
+// 	}
 
-	return api.do(req, o)
-}
+// 	return api.do(req, o)
+// }
 
 func (api *KSCloudAPI) do(req *http.Request, o *requestOptions) (io.ReadCloser, int64, error) {
 	o.setHeaders(req)

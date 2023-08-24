@@ -3,14 +3,10 @@ package v1
 import (
 	"encoding/json"
 	"errors"
-	"io"
-	"log"
 	"math/rand"
-	"net/http"
 	"os"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -46,47 +42,8 @@ func TestKSCloudAPI(t *testing.T) {
 	require.NoError(t, err)
 
 	ks.SetAccountID("armo")
-	hdrs := map[string]string{"key": "value"}
-	body := []byte("body-post")
 
 	t.Run("with authenticated", func(t *testing.T) {
-		t.Run("with generic REST methods", func(t *testing.T) {
-			t.Run("should POST", func(t *testing.T) {
-				t.Parallel()
-
-				resp, err := ks.Post(srv.URL(pathTestPost), hdrs, body)
-				require.NoError(t, err)
-
-				require.EqualValues(t, string(body), resp)
-			})
-
-			t.Run("should POST (no headers)", func(t *testing.T) {
-				t.Parallel()
-
-				resp, err := ks.Post(srv.URL(pathTestPost), nil, body)
-				require.NoError(t, err)
-
-				require.EqualValues(t, string(body), resp)
-			})
-
-			t.Run("should DELETE", func(t *testing.T) {
-				t.Parallel()
-
-				resp, err := ks.Delete(srv.URL(pathTestDelete), hdrs)
-				require.NoError(t, err)
-
-				require.EqualValues(t, "body-delete", resp)
-			})
-
-			t.Run("should GET", func(t *testing.T) {
-				t.Parallel()
-
-				resp, err := ks.Get(srv.URL(pathTestGet), hdrs)
-				require.NoError(t, err)
-
-				require.EqualValues(t, "body-get", resp)
-			})
-		})
 
 		t.Run("should retrieve AttackTracks", func(t *testing.T) {
 			t.Parallel()
@@ -262,37 +219,6 @@ func TestKSCloudAPI(t *testing.T) {
 				require.EqualValues(t, expected, account)
 			})
 
-			t.Run("should retrieve scoped CustomerConfig", func(t *testing.T) {
-				// NOTE: this is not directly exposed as an exported method of the API client,
-				// but called internally on some specific condition that is hard to reproduce in test.
-				t.Parallel()
-
-				mocks := mockCustomerConfig("", "customer")()
-				expected, err := json.Marshal(mocks)
-				require.NoError(t, err)
-
-				account, err := ks.Get(ks.getAccountConfigDefault(""), nil)
-				require.NoError(t, err)
-				require.NotNil(t, account)
-				require.JSONEq(t, string(expected), account)
-			})
-
-			t.Run("should retrieve scoped CustomerConfig for cluster", func(t *testing.T) {
-				// NOTE: same as above
-				t.Parallel()
-
-				const cluster = "special-cluster"
-
-				mocks := mockCustomerConfig(cluster, "customer")()
-				expected, err := json.Marshal(mocks)
-				require.NoError(t, err)
-
-				account, err := ks.Get(ks.getAccountConfigDefault(cluster), nil)
-				require.NoError(t, err)
-				require.NotNil(t, account)
-				require.JSONEq(t, string(expected), account)
-			})
-
 			t.Run("should retrieve ControlInputs", func(t *testing.T) {
 				t.Parallel()
 
@@ -319,28 +245,6 @@ func TestKSCloudAPI(t *testing.T) {
 				ks.SubmitReport(submitted),
 			)
 		})
-	})
-
-	t.Run("should POST with options", func(t *testing.T) {
-		// exercise some options of the client
-		t.Parallel()
-
-		log.SetOutput(io.Discard)
-		defer func() {
-			log.SetOutput(os.Stderr)
-		}()
-		kt, err := NewKSCloudAPI(srv.Root(), "",
-			WithHTTPClient(&http.Client{}),
-			WithTimeout(500*time.Millisecond),
-			WithTrace(true),
-		)
-		require.NoError(t, err)
-		kt.SetAccountID("armo")
-
-		resp, err := kt.Post(srv.URL(pathTestPost), hdrs, body)
-		require.NoError(t, err)
-
-		require.EqualValues(t, string(body), resp)
 	})
 
 	t.Run("with getters & setters", func(t *testing.T) {
@@ -405,22 +309,7 @@ func TestKSCloudAPI(t *testing.T) {
 		require.NoError(t, err)
 		ke.SetAccountID("armo")
 
-		hdrs := map[string]string{"key": "value"}
-		body := []byte("body-post")
-
 		t.Run("API calls should error", func(t *testing.T) {
-			_, err := ke.Post(errSrv.URL(pathTestPost), hdrs, body)
-			require.Error(t, err)
-			require.Contains(t, err.Error(), errAPI.Error())
-
-			_, err = ke.Delete(errSrv.URL(pathTestDelete), hdrs)
-			require.Error(t, err)
-			require.Contains(t, err.Error(), errAPI.Error())
-
-			_, err = ke.Get(errSrv.URL(pathTestGet), hdrs)
-			require.Error(t, err)
-			require.Contains(t, err.Error(), errAPI.Error())
-
 			_, err = ke.GetExceptions("")
 			require.Error(t, err)
 			require.Contains(t, err.Error(), errAPI.Error())

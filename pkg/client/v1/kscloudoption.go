@@ -94,24 +94,6 @@ func withContentJSON(enabled bool) requestOption {
 	}
 }
 
-// withExtraHeaders adds extra headers to a request
-func withExtraHeaders(headers map[string]string) requestOption {
-	return func(o *requestOptions) {
-		o.headers = headers
-	}
-}
-
-/* not used yet
-// withContext sets the context of a request.
-//
-// By default, context.Background() is used.
-func withContext(ctx context.Context) requestOption {
-	return func(o *requestOptions) {
-		o.reqContext = ctx
-	}
-}
-*/
-
 // withTrace dumps requests for debugging
 func withTrace(enabled bool) requestOption {
 	return func(o *requestOptions) {

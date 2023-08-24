@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/armosec/armoapi-go v0.0.220
 	github.com/armosec/utils-go v0.0.20
+	github.com/google/uuid v1.3.0
 	github.com/json-iterator/go v1.1.12
 	github.com/kubescape/opa-utils v0.0.266
 	github.com/stretchr/testify v1.8.4
@@ -67,7 +68,6 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/s2a-go v0.1.4 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.11.0 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
