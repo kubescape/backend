@@ -16,16 +16,6 @@ var (
 	ErrAPINotPublic = errors.New("control api is not public")
 )
 
-// IBackend knows how to configure a KS Cloud client
-type IKubescapeBackend interface {
-	GetAccountID() string
-	GetCloudReportURL() string
-	GetCloudAPIURL() string
-	SetAccountID(accountID string)
-	SetCloudReportURL(cloudReportURL string) error
-	SetCloudAPIURL(cloudAPIURL string) error
-}
-
 // KSCloudAPI allows to access the API of the Kubescape Cloud offering.
 type KSCloudAPI struct {
 	*KsCloudOptions
