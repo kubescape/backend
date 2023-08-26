@@ -12,7 +12,6 @@ func GetRootGatewayUrl(gatewayUrl string) (*url.URL, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	// if no scheme is specified, calling ParseHost default to https, so we need to change it to wss
 	if scheme == "https" {
 		scheme = "wss"
