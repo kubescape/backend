@@ -151,3 +151,20 @@ func (s *ServiceDiscoveryFileV1) ParseResponse(response json.RawMessage) (schema
 
 	return nil, fmt.Errorf("invalid response")
 }
+
+func NewServiceDiscoveryStreamV1(data []byte) *ServiceDiscoveryStreamV1 {
+	return &ServiceDiscoveryStreamV1{data: data}
+}
+
+func (s *ServiceDiscoveryStreamV1) Get() (io.Reader, error) {
+	return bytes.NewReader(s.data), nil
+}
+
+func (s *ServiceDiscoveryStreamV1) ParseResponse(response json.RawMessage) (schema.IBackendServices, error) {
+	var services ServicesV1
+	if err := json.Unmarshal(response, &services); err == nil {
+		return &services, nil
+	}
+
+	return nil, fmt.Errorf("invalid response")
+}

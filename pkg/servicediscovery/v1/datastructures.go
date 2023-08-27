@@ -23,3 +23,7 @@ type ServicesV1 struct {
 type ServiceDiscoveryFileV1 struct {
 	path string
 }
+
+type ServiceDiscoveryStreamV1 struct {
+	data []byte
+}

@@ -58,3 +58,20 @@ func TestServiceDiscoveryFileV1(t *testing.T) {
 	assert.NotEmpty(t, services.GetReportReceiverHttpUrl())
 	assert.NotEmpty(t, services.GetReportReceiverWebsocketUrl())
 }
+
+func TestServiceDiscoveryStreamV1(t *testing.T) {
+	stream := []byte("{\"version\": \"v1\",\"response\": {\"event-receiver-http\": \"https://er-test.com\",\"event-receiver-ws\": \"wss://er-test.com\",\"gateway\": \"https://gw.test.com\",\"api-server\": \"https://api.test.com\",\"metrics\": \"https://metrics.test.com\"}}")
+	services, err := GetServices(
+		v1.NewServiceDiscoveryStreamV1(stream),
+	)
+	if err != nil {
+		assert.FailNowf(t, "failed to get services from stream: %s", err.Error())
+	}
+
+	assert.NotNil(t, services)
+	assert.NotEmpty(t, services.GetApiServerUrl())
+	assert.NotEmpty(t, services.GetGatewayUrl())
+	assert.NotEmpty(t, services.GetMetricsUrl())
+	assert.NotEmpty(t, services.GetReportReceiverHttpUrl())
+	assert.NotEmpty(t, services.GetReportReceiverWebsocketUrl())
+}
