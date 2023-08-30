@@ -3,8 +3,6 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"sync"
 	"time"
@@ -48,8 +46,8 @@ type IReportSender interface {
 
 type BaseReportSender struct {
 	eventReceiverUrl string
-	httpClient       httputils.IHttpClient
 	report           *systemreports.BaseReport
+	httpSender       IHttpSender
 }
 
 type sysEndpoint struct {
@@ -60,8 +58,8 @@ type sysEndpoint struct {
 func NewBaseReportSender(eventReceiverUrl string, httpClient httputils.IHttpClient, report *systemreports.BaseReport) *BaseReportSender {
 	return &BaseReportSender{
 		eventReceiverUrl: eventReceiverUrl,
-		httpClient:       httpClient,
 		report:           report,
+		httpSender:       &HttpReportSender{httpClient},
 	}
 }
 
@@ -71,8 +69,8 @@ func (e *sysEndpoint) IsEmpty() bool {
 
 func (e *sysEndpoint) Set(value string) {
 	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.value = value
-	e.mu.Unlock()
 }
 
 func (e *sysEndpoint) Get() string {
@@ -125,41 +123,17 @@ func (s *BaseReportSender) Send() (int, string, error) {
 	if err != nil {
 		return 500, "Couldn't marshall report object", err
 	}
-	var resp *http.Response
-	var bodyAsStr string
-	for i := 0; i < MAX_RETRIES; i++ {
-		resp, err = httputils.HttpPost(s.httpClient, url.String(), map[string]string{"Content-Type": "application/json"}, reqBody)
-		bodyAsStr = "body could not be fetched"
-		retry := err != nil
-		if resp != nil {
-			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-				retry = true
-			}
-			if resp.Body != nil {
-				body, err := io.ReadAll(resp.Body)
-				if err == nil {
-					bodyAsStr = string(body)
-				}
-				resp.Body.Close()
-			}
-		}
-		if !retry {
-			break
-		}
-		//else err != nil
-		e := fmt.Errorf("attempt #%d %s - Failed posting report. Url: '%s', reason: '%s' report: '%s' response: '%s'", i, s.report.GetReportID(), url.String(), err.Error(), string(reqBody), bodyAsStr)
 
-		if i == MAX_RETRIES-1 {
-			return 500, e.Error(), err
-		}
-		//wait 5 secs between retries
-		time.Sleep(RETRY_DELAY)
+	statusCode, bodyAsStr, err := s.httpSender.Send(url.String(), reqBody)
+	if err != nil {
+		return statusCode, bodyAsStr, err
 	}
+
 	//first successful report gets it's jobID/proccessID
-	if len(s.report.JobID) == 0 && bodyAsStr != "ok" && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+	if len(s.report.JobID) == 0 && bodyAsStr != "ok" && statusCode >= 200 && statusCode < 300 {
 		s.report.JobID = bodyAsStr
 	}
-	return resp.StatusCode, bodyAsStr, nil
+	return statusCode, bodyAsStr, nil
 
 }
 
@@ -194,17 +168,25 @@ func (sender *BaseReportSender) SendError(err error, sendReport bool, initErrors
 	sender.report.Mutex.Lock()
 	defer sender.report.Mutex.Unlock()
 
+	if sender.report.Errors == nil {
+		sender.report.Errors = make([]string, 0)
+	}
+
 	if err != nil {
 		e := fmt.Sprintf("Action: %s, Error: %s", sender.report.ActionName, err.Error())
 		sender.report.Errors = append(sender.report.Errors, e)
 	}
 	sender.report.Status = systemreports.JobFailed
 
-	if !sendReport {
-		return
+	if sendReport {
+		if e := sender.unprotectedSendAsRoutine(true); e != nil {
+			if errChan != nil {
+				errChan <- e
+			}
+		}
 	}
-	if err := sender.unprotectedSendAsRoutine(true); err != nil {
-		errChan <- err
+	if initErrors {
+		sender.report.Errors = make([]string, 0)
 	}
 }
 
@@ -221,12 +203,16 @@ func (sender *BaseReportSender) SendWarning(warnMsg string, sendReport bool, ini
 	}
 	sender.report.Status = systemreports.JobWarning
 
-	if !sendReport {
-		return
+	if sendReport {
+		if err := sender.unprotectedSendAsRoutine(true); err != nil {
+			if errChan != nil {
+				errChan <- err
+			}
+		}
 	}
 
-	if err := sender.unprotectedSendAsRoutine(true); err != nil {
-		errChan <- err
+	if initWarnings {
+		sender.report.Errors = make([]string, 0)
 	}
 }
 
@@ -240,7 +226,9 @@ func (sender *BaseReportSender) SendAction(actionName string, sendReport bool, e
 	}
 
 	if err := sender.unprotectedSendAsRoutine(true); err != nil {
-		errChan <- err
+		if errChan != nil {
+			errChan <- err
+		}
 	}
 }
 
@@ -254,7 +242,9 @@ func (sender *BaseReportSender) SendStatus(status string, sendReport bool, errCh
 	}
 
 	if err := sender.unprotectedSendAsRoutine(true); err != nil {
-		errChan <- err
+		if errChan != nil {
+			errChan <- err
+		}
 	}
 }
 
@@ -268,7 +258,9 @@ func (sender *BaseReportSender) SendDetails(details string, sendReport bool, err
 	}
 
 	if err := sender.unprotectedSendAsRoutine(true); err != nil {
-		errChan <- err
+		if errChan != nil {
+			errChan <- err
+		}
 	}
 }
 
