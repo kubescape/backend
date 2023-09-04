@@ -21,9 +21,10 @@ type HttpReportSender struct {
 func (s *HttpReportSender) Send(serverURL string, reqBody []byte) (int, string, error) {
 
 	var resp *http.Response
+	var err error
 	var bodyAsStr string
 	for i := 0; i < MAX_RETRIES; i++ {
-		resp, err := httputils.HttpPost(s.httpClient, serverURL, map[string]string{"Content-Type": "application/json"}, reqBody)
+		resp, err = httputils.HttpPost(s.httpClient, serverURL, map[string]string{"Content-Type": "application/json"}, reqBody)
 		bodyAsStr = "body could not be fetched"
 		retry := err != nil
 		if resp != nil {
@@ -49,6 +50,9 @@ func (s *HttpReportSender) Send(serverURL string, reqBody []byte) (int, string, 
 		}
 		//wait 5 secs between retries
 		time.Sleep(RETRY_DELAY)
+	}
+	if resp == nil {
+		return 500, bodyAsStr, fmt.Errorf("failed to send report, empty response: %w", err)
 	}
 	return resp.StatusCode, bodyAsStr, nil
 
