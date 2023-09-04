@@ -3,8 +3,6 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"sync"
 	"time"
@@ -48,8 +46,8 @@ type IReportSender interface {
 
 type BaseReportSender struct {
 	eventReceiverUrl string
-	httpClient       httputils.IHttpClient
 	report           *systemreports.BaseReport
+	httpSender       IHttpSender
 }
 
 type sysEndpoint struct {
@@ -60,8 +58,8 @@ type sysEndpoint struct {
 func NewBaseReportSender(eventReceiverUrl string, httpClient httputils.IHttpClient, report *systemreports.BaseReport) *BaseReportSender {
 	return &BaseReportSender{
 		eventReceiverUrl: eventReceiverUrl,
-		httpClient:       httpClient,
 		report:           report,
+		httpSender:       &HttpReportSender{httpClient},
 	}
 }
 
@@ -71,8 +69,8 @@ func (e *sysEndpoint) IsEmpty() bool {
 
 func (e *sysEndpoint) Set(value string) {
 	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.value = value
-	e.mu.Unlock()
 }
 
 func (e *sysEndpoint) Get() string {
@@ -125,120 +123,77 @@ func (s *BaseReportSender) Send() (int, string, error) {
 	if err != nil {
 		return 500, "Couldn't marshall report object", err
 	}
-	var resp *http.Response
-	var bodyAsStr string
-	for i := 0; i < MAX_RETRIES; i++ {
-		resp, err = httputils.HttpPost(s.httpClient, url.String(), map[string]string{"Content-Type": "application/json"}, reqBody)
-		bodyAsStr = "body could not be fetched"
-		retry := err != nil
-		if resp != nil {
-			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-				retry = true
-			}
-			if resp.Body != nil {
-				body, err := io.ReadAll(resp.Body)
-				if err == nil {
-					bodyAsStr = string(body)
-				}
-				resp.Body.Close()
-			}
-		}
-		if !retry {
-			break
-		}
-		//else err != nil
-		e := fmt.Errorf("attempt #%d %s - Failed posting report. Url: '%s', reason: '%s' report: '%s' response: '%s'", i, s.report.GetReportID(), url.String(), err.Error(), string(reqBody), bodyAsStr)
 
-		if i == MAX_RETRIES-1 {
-			return 500, e.Error(), err
-		}
-		//wait 5 secs between retries
-		time.Sleep(RETRY_DELAY)
+	statusCode, bodyAsStr, err := s.httpSender.Send(url.String(), reqBody)
+	if err != nil {
+		return statusCode, bodyAsStr, err
 	}
+
 	//first successful report gets it's jobID/proccessID
-	if len(s.report.JobID) == 0 && bodyAsStr != "ok" && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+	if len(s.report.JobID) == 0 && bodyAsStr != "ok" && statusCode >= 200 && statusCode < 300 {
 		s.report.JobID = bodyAsStr
 	}
-	return resp.StatusCode, bodyAsStr, nil
+	return statusCode, bodyAsStr, nil
 
 }
 
 // The caller must read the errChan, to prevent the goroutine from waiting in memory forever
 func (sender *BaseReportSender) SendAsRoutine(progressNext bool, errChan chan<- error) {
 	sender.report.Mutex.Lock()
-	wg := &sync.WaitGroup{}
-	sender.unprotectedSendAsRoutine(errChan, progressNext, wg)
-	go func(report *systemreports.BaseReport) {
-		wg.Wait()
-		report.Mutex.Unlock()
-	}(sender.report)
+	defer sender.report.Mutex.Unlock()
+
+	if err := sender.unprotectedSendAsRoutine(progressNext); err != nil {
+		errChan <- err
+	}
 }
 
 // internal send as routine without mutex lock
-func (sender *BaseReportSender) unprotectedSendAsRoutine(errChan chan<- error, progressNext bool, wg *sync.WaitGroup) {
-	wg.Add(1)
-	go func() {
-
-		defer func() {
-			wg.Done()
-			recover()
-		}()
-		status, body, err := sender.Send()
-		if errChan != nil {
-			if err != nil {
-				errorChannelSend(errChan, err)
-				return
-			}
-			if status < 200 || status >= 300 {
-				err := fmt.Errorf("failed to send report. Status: %d Body:%s", status, body)
-				errorChannelSend(errChan, err)
-				return
-			}
-		}
-		if progressNext {
-			sender.report.NextActionID()
-		}
-		if errChan != nil {
-			errorChannelSend(errChan, err)
-		}
-	}()
+func (sender *BaseReportSender) unprotectedSendAsRoutine(progressNext bool) error {
+	defer recover()
+	status, body, err := sender.Send()
+	if err != nil {
+		return err
+	}
+	if status < 200 || status >= 300 {
+		err := fmt.Errorf("failed to send report. Status: %d Body:%s", status, body)
+		return err
+	}
+	if progressNext {
+		sender.report.NextActionID()
+	}
+	return nil
 }
 
-// SendError - wrap AddError
-
 func (sender *BaseReportSender) SendError(err error, sendReport bool, initErrors bool, errChan chan<- error) {
-	sender.report.Mutex.Lock() // +
+	sender.report.Mutex.Lock()
+	defer sender.report.Mutex.Unlock()
 
 	if sender.report.Errors == nil {
 		sender.report.Errors = make([]string, 0)
 	}
+
 	if err != nil {
 		e := fmt.Sprintf("Action: %s, Error: %s", sender.report.ActionName, err.Error())
 		sender.report.Errors = append(sender.report.Errors, e)
 	}
-	sender.report.Status = systemreports.JobFailed // TODO - Add flag?
+	sender.report.Status = systemreports.JobFailed
 
 	if sendReport {
-		wg := &sync.WaitGroup{}
-		sender.unprotectedSendAsRoutine(errChan, true, wg)
-		go func(report *systemreports.BaseReport) {
-			wg.Wait()
-			if initErrors {
-				report.Errors = make([]string, 0)
+		if e := sender.unprotectedSendAsRoutine(true); e != nil {
+			if errChan != nil {
+				errChan <- e
 			}
-			report.Mutex.Unlock() // -
-		}(sender.report)
-	} else {
-		go func() { errorChannelSend(errChan, nil) }()
-		if initErrors {
-			sender.report.Errors = make([]string, 0)
 		}
-		sender.report.Mutex.Unlock() // -
+	}
+	if initErrors {
+		sender.report.Errors = make([]string, 0)
 	}
 }
 
 func (sender *BaseReportSender) SendWarning(warnMsg string, sendReport bool, initWarnings bool, errChan chan<- error) {
-	sender.report.Mutex.Lock() // +
+	sender.report.Mutex.Lock()
+	defer sender.report.Mutex.Unlock()
+
 	if sender.report.Errors == nil {
 		sender.report.Errors = make([]string, 0)
 	}
@@ -249,89 +204,62 @@ func (sender *BaseReportSender) SendWarning(warnMsg string, sendReport bool, ini
 	sender.report.Status = systemreports.JobWarning
 
 	if sendReport {
-		wg := &sync.WaitGroup{}
-		sender.unprotectedSendAsRoutine(errChan, true, wg)
-		go func(report *systemreports.BaseReport) {
-			wg.Wait()
-			if initWarnings {
-				report.Errors = make([]string, 0)
+		if err := sender.unprotectedSendAsRoutine(true); err != nil {
+			if errChan != nil {
+				errChan <- err
 			}
-			report.Mutex.Unlock() // -
-		}(sender.report)
-	} else {
-		go func() { errorChannelSend(errChan, nil) }()
-		if initWarnings {
-			sender.report.Errors = make([]string, 0)
 		}
-		sender.report.Mutex.Unlock() // -
+	}
+
+	if initWarnings {
+		sender.report.Errors = make([]string, 0)
 	}
 }
 
 func (sender *BaseReportSender) SendAction(actionName string, sendReport bool, errChan chan<- error) {
 	sender.report.Mutex.Lock()
+	defer sender.report.Mutex.Unlock()
+
 	sender.report.DoSetActionName(actionName)
-	if sendReport {
-		wg := &sync.WaitGroup{}
-		sender.unprotectedSendAsRoutine(errChan, true, wg)
-		go func(report *systemreports.BaseReport) {
-			wg.Wait()
-			report.Mutex.Unlock() // -
-		}(sender.report)
-	} else {
+	if !sendReport {
+		return
+	}
+
+	if err := sender.unprotectedSendAsRoutine(true); err != nil {
 		if errChan != nil {
-			go func() { errorChannelSend(errChan, nil) }()
+			errChan <- err
 		}
-		sender.report.Mutex.Unlock() // -
 	}
 }
 
 func (sender *BaseReportSender) SendStatus(status string, sendReport bool, errChan chan<- error) {
 	sender.report.Mutex.Lock()
+	defer sender.report.Mutex.Unlock()
+
 	sender.report.DoSetStatus(status)
-	if sendReport {
-		wg := &sync.WaitGroup{}
-		sender.unprotectedSendAsRoutine(errChan, true, wg)
-		go func(report *systemreports.BaseReport) {
-			wg.Wait()
-			report.Mutex.Unlock() // -
-		}(sender.report)
-	} else {
+	if !sendReport {
+		return
+	}
+
+	if err := sender.unprotectedSendAsRoutine(true); err != nil {
 		if errChan != nil {
-			go func() { errorChannelSend(errChan, nil) }()
+			errChan <- err
 		}
-		sender.report.Mutex.Unlock() // -
 	}
 }
 
 func (sender *BaseReportSender) SendDetails(details string, sendReport bool, errChan chan<- error) {
 	sender.report.Mutex.Lock()
+	defer sender.report.Mutex.Unlock()
+
 	sender.report.DoSetDetails(details)
 	if sendReport {
-		wg := &sync.WaitGroup{}
-		sender.unprotectedSendAsRoutine(errChan, true, wg)
-		go func(report *systemreports.BaseReport) {
-			wg.Wait()
-			report.Mutex.Unlock() // -
-		}(sender.report)
-	} else {
-		if errChan != nil {
-			go func() { errorChannelSend(errChan, nil) }()
-		}
-		sender.report.Mutex.Unlock() // -
-	}
-}
-
-func errorChannelSend(errChan chan<- error, err error) {
-	if errChan == nil {
 		return
 	}
-	//let the error channel reader have at least 0.5 seconds to read the error
-	for i := 0; i < 500; i++ {
-		select {
-		case errChan <- err:
-			return
-		default:
-			time.Sleep(time.Millisecond)
+
+	if err := sender.unprotectedSendAsRoutine(true); err != nil {
+		if errChan != nil {
+			errChan <- err
 		}
 	}
 }
