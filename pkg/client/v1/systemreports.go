@@ -253,7 +253,7 @@ func (sender *BaseReportSender) SendDetails(details string, sendReport bool, err
 	defer sender.report.Mutex.Unlock()
 
 	sender.report.DoSetDetails(details)
-	if sendReport {
+	if !sendReport {
 		return
 	}
 
