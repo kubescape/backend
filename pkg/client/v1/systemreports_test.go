@@ -30,22 +30,20 @@ func TestSendDeadlock(t *testing.T) {
 			httpSender:       &HttpReportSenderMock{},
 			// httpSender: &HttpReportSender{httpClient: &http.Client{}},
 		}
-		reporter.SendError(err1, true, false, nil)
-		reporter.SendError(err1, false, false, nil)
-		reporter.SendError(err1, false, false, nil)
-		reporter.SendError(err1, true, false, nil)
+		reporter.SendError(err1, true, false)
+		reporter.SendError(err1, false, false)
+		reporter.SendError(err1, false, false)
+		reporter.SendError(err1, true, false)
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter.report) // 1
 
-		errChan := make(chan error)
-		reporter.SendError(err1, false, true, errChan)
+		reporter.SendError(err1, false, true)
 		done <- 0
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter.report) // 2
 
-		errChan1 := make(chan error)
 		err2 := fmt.Errorf("dummy error1")
-		reporter.SendError(err2, false, false, errChan1)
+		reporter.SendError(err2, false, false)
 		done <- 1
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter.report) // 3
@@ -62,75 +60,64 @@ func TestSendDeadlock(t *testing.T) {
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter.report) // 4
 
-		reporter.SendAsRoutine(false, nil)
-		errChan2 := make(chan error)
-		reporter.SendAsRoutine(true, errChan2)
+		reporter.SendAsRoutine(false)
+		reporter.SendAsRoutine(true)
 		done <- 2
 
-		errChan3 := make(chan error)
-		reporter.SendError(nil, false, true, errChan3)
+		reporter.SendError(nil, false, true)
 		done <- 3
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter.report) // 5
 
-		reporter.SendStatus("status", true, nil)
-		reporter.SendStatus("status", false, nil)
+		reporter.SendStatus("status", true)
+		reporter.SendStatus("status", false)
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter.report) // 6
 
-		errChan4 := make(chan error)
-		reporter.SendStatus("status", true, errChan4)
+		reporter.SendStatus("status", true)
 		done <- 4
 
-		errChan5 := make(chan error)
-		reporter.SendStatus("status", false, errChan5)
+		reporter.SendStatus("status", false)
 		done <- 5
 
-		reporter.SendAction("action", true, nil)
-		reporter.SendAction("action", false, nil)
+		reporter.SendAction("action", true)
+		reporter.SendAction("action", false)
 
-		errChan6 := make(chan error)
-		reporter.SendAction("action", true, errChan6)
+		reporter.SendAction("action", true)
 		done <- 6
 
-		errChan7 := make(chan error)
-		reporter.SendAction("action", true, errChan7)
+		reporter.SendAction("action", true)
 		done <- 7
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter.report) // 7
 
-		reporter.SendDetails("details", true, nil)
-		reporter.SendDetails("details", false, nil)
+		reporter.SendDetails("details", true)
+		reporter.SendDetails("details", false)
 
-		errChan8 := make(chan error)
-		reporter.SendDetails("details", true, errChan8)
+		reporter.SendDetails("details", true)
 		done <- 8
 
-		errChan9 := make(chan error)
-		reporter.SendDetails("details", false, errChan9)
+		reporter.SendDetails("details", false)
 		done <- 9
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter.report) // 8
 
-		reporter.SendWarning("warning", true, false, nil)
-		reporter.SendWarning("warning", false, false, nil)
-		reporter.SendWarning("warning", false, false, nil)
-		reporter.SendWarning("warning", true, false, nil)
+		reporter.SendWarning("warning", true, false)
+		reporter.SendWarning("warning", false, false)
+		reporter.SendWarning("warning", false, false)
+		reporter.SendWarning("warning", true, false)
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter.report) // 9
 
-		errChan10 := make(chan error)
-		reporter.SendWarning("warning", true, false, errChan10)
+		reporter.SendWarning("warning", true, false)
 		done <- 10
 
-		errChan11 := make(chan error)
-		reporter.SendWarning("warning", false, false, errChan11)
+		reporter.SendWarning("warning", false, false)
 		done <- 11
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter.report) // 10
 
-		errChan12 := make(chan error)
-		reporter.SendWarning("warning", false, true, errChan12)
+		reporter.SendWarning("warning", false, true)
 		done <- 12
 		snapshotNum++
 		compareSnapshot(snapshotNum, t, reporter.report) // 11
@@ -138,7 +125,7 @@ func TestSendDeadlock(t *testing.T) {
 		//finally test a caller that forgets to read the error channel
 		errChan14 := make(chan error)
 		timelocked := time.Now()
-		reporter.SendWarning("warning", false, true, errChan12)
+		reporter.SendWarning("warning", false, true)
 		//call a mutex blocking function
 		reporter.report.SetStatus("status")
 		dur := time.Now().Sub(timelocked)
