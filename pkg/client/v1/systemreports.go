@@ -8,6 +8,9 @@ import (
 	"time"
 
 	httputils "github.com/armosec/utils-go/httputils"
+	logger "github.com/kubescape/go-logger"
+	"github.com/kubescape/go-logger/helpers"
+
 	v1 "github.com/kubescape/backend/pkg/server/v1"
 	"github.com/kubescape/backend/pkg/server/v1/systemreports"
 	"github.com/kubescape/backend/pkg/utils"
@@ -34,14 +37,14 @@ type IReportSender interface {
 		progressNext bool - increase actionID, sometimes u send parallel jobs that have the same order - (vuln scanning a cluster for eg. all wl scans have the same order)
 		errChan - chan to allow the goroutine to return the errors inside
 	*/
-	SendAsRoutine(bool, chan<- error) //goroutine wrapper
+	SendAsRoutine(bool) //goroutine wrapper
 
 	// set methods
-	SendAction(action string, sendReport bool, errChan chan<- error)
-	SendError(err error, sendReport bool, initErrors bool, errChan chan<- error)
-	SendStatus(status string, sendReport bool, errChan chan<- error)
-	SendDetails(details string, sendReport bool, errChan chan<- error)
-	SendWarning(warning string, sendReport bool, initWarnings bool, errChan chan<- error)
+	SendAction(action string, sendReport bool)
+	SendError(err error, sendReport bool, initErrors bool)
+	SendStatus(status string, sendReport bool)
+	SendDetails(details string, sendReport bool)
+	SendWarning(warning string, sendReport bool, initWarnings bool)
 }
 
 type BaseReportSender struct {
@@ -138,12 +141,12 @@ func (s *BaseReportSender) Send() (int, string, error) {
 }
 
 // The caller must read the errChan, to prevent the goroutine from waiting in memory forever
-func (sender *BaseReportSender) SendAsRoutine(progressNext bool, errChan chan<- error) {
+func (sender *BaseReportSender) SendAsRoutine(progressNext bool) {
 	sender.report.Mutex.Lock()
 	defer sender.report.Mutex.Unlock()
 
 	if err := sender.unprotectedSendAsRoutine(progressNext); err != nil {
-		errChan <- err
+		logger.L().Warning("failed to send report", helpers.Error(err))
 	}
 }
 
@@ -164,7 +167,7 @@ func (sender *BaseReportSender) unprotectedSendAsRoutine(progressNext bool) erro
 	return nil
 }
 
-func (sender *BaseReportSender) SendError(err error, sendReport bool, initErrors bool, errChan chan<- error) {
+func (sender *BaseReportSender) SendError(err error, sendReport bool, initErrors bool) {
 	sender.report.Mutex.Lock()
 	defer sender.report.Mutex.Unlock()
 
@@ -180,9 +183,8 @@ func (sender *BaseReportSender) SendError(err error, sendReport bool, initErrors
 
 	if sendReport {
 		if e := sender.unprotectedSendAsRoutine(true); e != nil {
-			if errChan != nil {
-				errChan <- e
-			}
+			logger.L().Warning("failed to send report", helpers.Error(err))
+
 		}
 	}
 	if initErrors {
@@ -190,7 +192,7 @@ func (sender *BaseReportSender) SendError(err error, sendReport bool, initErrors
 	}
 }
 
-func (sender *BaseReportSender) SendWarning(warnMsg string, sendReport bool, initWarnings bool, errChan chan<- error) {
+func (sender *BaseReportSender) SendWarning(warnMsg string, sendReport bool, initWarnings bool) {
 	sender.report.Mutex.Lock()
 	defer sender.report.Mutex.Unlock()
 
@@ -205,9 +207,8 @@ func (sender *BaseReportSender) SendWarning(warnMsg string, sendReport bool, ini
 
 	if sendReport {
 		if err := sender.unprotectedSendAsRoutine(true); err != nil {
-			if errChan != nil {
-				errChan <- err
-			}
+			logger.L().Warning("failed to send report", helpers.Error(err))
+
 		}
 	}
 
@@ -216,7 +217,7 @@ func (sender *BaseReportSender) SendWarning(warnMsg string, sendReport bool, ini
 	}
 }
 
-func (sender *BaseReportSender) SendAction(actionName string, sendReport bool, errChan chan<- error) {
+func (sender *BaseReportSender) SendAction(actionName string, sendReport bool) {
 	sender.report.Mutex.Lock()
 	defer sender.report.Mutex.Unlock()
 
@@ -226,13 +227,12 @@ func (sender *BaseReportSender) SendAction(actionName string, sendReport bool, e
 	}
 
 	if err := sender.unprotectedSendAsRoutine(true); err != nil {
-		if errChan != nil {
-			errChan <- err
-		}
+		logger.L().Warning("failed to send report", helpers.Error(err))
+
 	}
 }
 
-func (sender *BaseReportSender) SendStatus(status string, sendReport bool, errChan chan<- error) {
+func (sender *BaseReportSender) SendStatus(status string, sendReport bool) {
 	sender.report.Mutex.Lock()
 	defer sender.report.Mutex.Unlock()
 
@@ -242,13 +242,12 @@ func (sender *BaseReportSender) SendStatus(status string, sendReport bool, errCh
 	}
 
 	if err := sender.unprotectedSendAsRoutine(true); err != nil {
-		if errChan != nil {
-			errChan <- err
-		}
+		logger.L().Warning("failed to send report", helpers.Error(err))
+
 	}
 }
 
-func (sender *BaseReportSender) SendDetails(details string, sendReport bool, errChan chan<- error) {
+func (sender *BaseReportSender) SendDetails(details string, sendReport bool) {
 	sender.report.Mutex.Lock()
 	defer sender.report.Mutex.Unlock()
 
@@ -258,9 +257,8 @@ func (sender *BaseReportSender) SendDetails(details string, sendReport bool, err
 	}
 
 	if err := sender.unprotectedSendAsRoutine(true); err != nil {
-		if errChan != nil {
-			errChan <- err
-		}
+		logger.L().Warning("failed to send report", helpers.Error(err))
+
 	}
 }
 
