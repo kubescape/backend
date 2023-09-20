@@ -3,13 +3,13 @@ module github.com/kubescape/backend
 go 1.20
 
 require (
-	github.com/armosec/armoapi-go v0.0.220
-	github.com/armosec/utils-go v0.0.20
+	github.com/armosec/armoapi-go v0.0.254
+	github.com/armosec/utils-go v0.0.40
 	github.com/francoispqt/gojay v1.2.13
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.3.1
 	github.com/json-iterator/go v1.1.12
 	github.com/kubescape/go-logger v0.0.21
-	github.com/kubescape/opa-utils v0.0.266
+	github.com/kubescape/opa-utils v0.0.268
 	github.com/stretchr/testify v1.8.4
 )
 
