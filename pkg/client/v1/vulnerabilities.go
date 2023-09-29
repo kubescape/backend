@@ -34,7 +34,7 @@ func getCVEExceptionsURL(backendURL, customerGUID string, designators *identifie
 	return expURL, nil
 }
 
-func getCVEExceptionByDEsignator(backendURL, customerGUID string, designators *identifiers.PortalDesignator) ([]armotypes.VulnerabilityExceptionPolicy, error) {
+func getCVEExceptionByDEsignator(backendURL, customerGUID string, designators *identifiers.PortalDesignator, headers map[string]string) ([]armotypes.VulnerabilityExceptionPolicy, error) {
 
 	var vulnerabilityExceptionPolicy []armotypes.VulnerabilityExceptionPolicy
 
@@ -43,7 +43,7 @@ func getCVEExceptionByDEsignator(backendURL, customerGUID string, designators *i
 		return nil, err
 	}
 
-	resp, err := httputils.HttpGet(http.DefaultClient, url.String(), nil)
+	resp, err := httputils.HttpGet(http.DefaultClient, url.String(), headers)
 	if err != nil {
 		return nil, err
 	}
@@ -65,8 +65,8 @@ func getCVEExceptionByDEsignator(backendURL, customerGUID string, designators *i
 	return vulnerabilityExceptionPolicy, nil
 }
 
-func GetCVEExceptionByDesignator(baseURL, customerGUID string, designators *identifiers.PortalDesignator) ([]armotypes.VulnerabilityExceptionPolicy, error) {
-	vulnerabilityExceptionPolicyList, err := getCVEExceptionByDEsignator(baseURL, customerGUID, designators)
+func GetCVEExceptionByDesignator(baseURL, customerGUID string, designators *identifiers.PortalDesignator, headers map[string]string) ([]armotypes.VulnerabilityExceptionPolicy, error) {
+	vulnerabilityExceptionPolicyList, err := getCVEExceptionByDEsignator(baseURL, customerGUID, designators, headers)
 	if err != nil {
 		return nil, err
 	}

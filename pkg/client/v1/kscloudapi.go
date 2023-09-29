@@ -87,8 +87,8 @@ func (api *KSCloudAPI) setCloudReportURL(cloudReportURL string) (err error) {
 	return err
 }
 
-func (api *KSCloudAPI) GetAttackTracks() ([]AttackTrack, error) {
-	rdr, _, err := api.get(api.getAttackTracksURL())
+func (api *KSCloudAPI) GetAttackTracks(opts ...RequestOption) ([]AttackTrack, error) {
+	rdr, _, err := api.get(api.getAttackTracksURL(), opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -110,8 +110,8 @@ func (api *KSCloudAPI) getAttackTracksURL() string {
 }
 
 // GetFramework retrieves a framework by name.
-func (api *KSCloudAPI) GetFramework(frameworkName string) (*Framework, error) {
-	rdr, _, err := api.get(api.getFrameworkURL(frameworkName))
+func (api *KSCloudAPI) GetFramework(frameworkName string, opts ...RequestOption) (*Framework, error) {
+	rdr, _, err := api.get(api.getFrameworkURL(frameworkName), opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -141,8 +141,8 @@ func (api *KSCloudAPI) getFrameworkURL(frameworkName string) string {
 }
 
 // GetFrameworks returns all registered frameworks.
-func (api *KSCloudAPI) GetFrameworks() ([]Framework, error) {
-	rdr, _, err := api.get(api.getListFrameworkURL())
+func (api *KSCloudAPI) GetFrameworks(opts ...RequestOption) ([]Framework, error) {
+	rdr, _, err := api.get(api.getListFrameworkURL(), opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -183,8 +183,8 @@ func (api *KSCloudAPI) ListCustomFrameworks() ([]string, error) {
 }
 
 // ListFrameworks list the names of all registered frameworks.
-func (api *KSCloudAPI) ListFrameworks() ([]string, error) {
-	frameworks, err := api.GetFrameworks()
+func (api *KSCloudAPI) ListFrameworks(opts ...RequestOption) ([]string, error) {
+	frameworks, err := api.GetFrameworks(opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -203,8 +203,8 @@ func (api *KSCloudAPI) ListFrameworks() ([]string, error) {
 }
 
 // GetExceptions returns exception policies.
-func (api *KSCloudAPI) GetExceptions(clusterName string) ([]PostureExceptionPolicy, error) {
-	rdr, _, err := api.get(api.getExceptionsURL(clusterName))
+func (api *KSCloudAPI) GetExceptions(clusterName string, opts ...RequestOption) ([]PostureExceptionPolicy, error) {
+	rdr, _, err := api.get(api.getExceptionsURL(clusterName), opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -227,12 +227,12 @@ func (api *KSCloudAPI) getExceptionsURL(clusterName string) string {
 }
 
 // GetAccountConfig yields the account configuration.
-func (api *KSCloudAPI) GetAccountConfig(clusterName string) (*CustomerConfig, error) {
+func (api *KSCloudAPI) GetAccountConfig(clusterName string, opts ...RequestOption) (*CustomerConfig, error) {
 	if api.accountID == "" {
 		return &CustomerConfig{}, nil
 	}
 
-	rdr, _, err := api.get(api.getAccountConfig(clusterName))
+	rdr, _, err := api.get(api.getAccountConfig(clusterName), opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +241,7 @@ func (api *KSCloudAPI) GetAccountConfig(clusterName string) (*CustomerConfig, er
 	accountConfig, err := utils.Decode[CustomerConfig](rdr)
 	if err != nil {
 		// retry with default scope
-		rdr, _, err = api.get(api.getAccountConfigDefault(clusterName))
+		rdr, _, err = api.get(api.getAccountConfigDefault(clusterName), opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -286,8 +286,8 @@ func (api *KSCloudAPI) getAccountConfigDefault(clusterName string) string {
 }
 
 // GetControlsInputs returns the controls inputs configured in the account configuration.
-func (api *KSCloudAPI) GetControlsInputs(clusterName string) (map[string][]string, error) {
-	accountConfig, err := api.GetAccountConfig(clusterName)
+func (api *KSCloudAPI) GetControlsInputs(clusterName string, opts ...RequestOption) (map[string][]string, error) {
+	accountConfig, err := api.GetAccountConfig(clusterName, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -312,7 +312,7 @@ func (api *KSCloudAPI) SubmitReport(report *PostureReport) error {
 		return err
 	}
 
-	_, _, err = api.post(api.postReportURL(report.ClusterName, report.ReportID), jazon, withContentJSON(true))
+	_, _, err = api.post(api.postReportURL(report.ClusterName, report.ReportID), jazon, WithContentJSON(true))
 
 	return err
 }
@@ -329,8 +329,8 @@ func (api *KSCloudAPI) postReportURL(cluster, reportID string) string {
 }
 
 // defaultRequestOptions adds standard authentication headers to all requests
-func (api *KSCloudAPI) defaultRequestOptions(opts []requestOption) *requestOptions {
-	optionsWithDefaults := append(make([]requestOption, 0, 4),
+func (api *KSCloudAPI) defaultRequestOptions(opts []RequestOption) *RequestOptions {
+	optionsWithDefaults := append(make([]RequestOption, 0, 4),
 		withTrace(api.withTrace),
 	)
 	optionsWithDefaults = append(optionsWithDefaults, opts...)
@@ -338,7 +338,7 @@ func (api *KSCloudAPI) defaultRequestOptions(opts []requestOption) *requestOptio
 	return requestOptionsWithDefaults(optionsWithDefaults)
 }
 
-func (api *KSCloudAPI) get(fullURL string, opts ...requestOption) (io.ReadCloser, int64, error) {
+func (api *KSCloudAPI) get(fullURL string, opts ...RequestOption) (io.ReadCloser, int64, error) {
 	o := api.defaultRequestOptions(opts)
 	req, err := http.NewRequestWithContext(o.reqContext, http.MethodGet, fullURL, nil)
 	if err != nil {
@@ -348,7 +348,7 @@ func (api *KSCloudAPI) get(fullURL string, opts ...requestOption) (io.ReadCloser
 	return api.do(req, o)
 }
 
-func (api *KSCloudAPI) post(fullURL string, body []byte, opts ...requestOption) (io.ReadCloser, int64, error) {
+func (api *KSCloudAPI) post(fullURL string, body []byte, opts ...RequestOption) (io.ReadCloser, int64, error) {
 	o := api.defaultRequestOptions(opts)
 	req, err := http.NewRequestWithContext(o.reqContext, http.MethodPost, fullURL, bytes.NewBuffer(body))
 	if err != nil {
@@ -358,7 +358,7 @@ func (api *KSCloudAPI) post(fullURL string, body []byte, opts ...requestOption) 
 	return api.do(req, o)
 }
 
-// func (api *KSCloudAPI) delete(fullURL string, opts ...requestOption) (io.ReadCloser, int64, error) {
+// func (api *KSCloudAPI) delete(fullURL string, opts ...RequestOption) (io.ReadCloser, int64, error) {
 // 	o := api.defaultRequestOptions(opts)
 // 	req, err := http.NewRequestWithContext(o.reqContext, http.MethodDelete, fullURL, nil)
 // 	if err != nil {
@@ -368,7 +368,7 @@ func (api *KSCloudAPI) post(fullURL string, body []byte, opts ...requestOption) 
 // 	return api.do(req, o)
 // }
 
-func (api *KSCloudAPI) do(req *http.Request, o *requestOptions) (io.ReadCloser, int64, error) {
+func (api *KSCloudAPI) do(req *http.Request, o *RequestOptions) (io.ReadCloser, int64, error) {
 	o.setHeaders(req)
 	o.traceReq(req)
 

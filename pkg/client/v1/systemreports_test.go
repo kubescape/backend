@@ -27,6 +27,7 @@ func TestSendDeadlock(t *testing.T) {
 		reporter := &BaseReportSender{
 			eventReceiverUrl: "https://dummyeventreceiver.com",
 			report:           baseReport,
+			headers:          map[string]string{},
 			httpSender:       &HttpReportSenderMock{},
 			// httpSender: &HttpReportSender{httpClient: &http.Client{}},
 		}
