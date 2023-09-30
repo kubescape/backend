@@ -50,6 +50,7 @@ type IReportSender interface {
 type BaseReportSender struct {
 	eventReceiverUrl string
 	report           *systemreports.BaseReport
+	headers          map[string]string
 	httpSender       IHttpSender
 }
 
@@ -58,10 +59,11 @@ type sysEndpoint struct {
 	mu    sync.RWMutex
 }
 
-func NewBaseReportSender(eventReceiverUrl string, httpClient httputils.IHttpClient, report *systemreports.BaseReport) *BaseReportSender {
+func NewBaseReportSender(eventReceiverUrl string, httpClient httputils.IHttpClient, headers map[string]string, report *systemreports.BaseReport) *BaseReportSender {
 	return &BaseReportSender{
 		eventReceiverUrl: eventReceiverUrl,
 		report:           report,
+		headers:          headers,
 		httpSender:       &HttpReportSender{httpClient},
 	}
 }
@@ -127,7 +129,7 @@ func (s *BaseReportSender) Send() (int, string, error) {
 		return 500, "Couldn't marshall report object", err
 	}
 
-	statusCode, bodyAsStr, err := s.httpSender.Send(url.String(), reqBody)
+	statusCode, bodyAsStr, err := s.httpSender.Send(url.String(), s.headers, reqBody)
 	if err != nil {
 		return statusCode, bodyAsStr, err
 	}

@@ -20,10 +20,10 @@ type (
 	}
 
 	// request option instructs post/get/delete to alter the outgoing request
-	requestOption func(*requestOptions)
+	RequestOption func(*RequestOptions)
 
-	// requestOptions knows how to enrich a request with headers
-	requestOptions struct {
+	// RequestOptions knows how to enrich a request with headers
+	RequestOptions struct {
 		withJSON   bool
 		withTrace  bool
 		headers    map[string]string
@@ -87,21 +87,28 @@ func ksCloudOptionsWithDefaults(opts []KSCloudOption) *KsCloudOptions {
 
 // http request options
 
-// withContentJSON sets JSON content type for a request
-func withContentJSON(enabled bool) requestOption {
-	return func(o *requestOptions) {
+// WithContentJSON sets JSON content type for a request
+func WithContentJSON(enabled bool) RequestOption {
+	return func(o *RequestOptions) {
 		o.withJSON = enabled
 	}
 }
 
+// WithContentJSON sets JSON content type for a request
+func WithHeaders(headers map[string]string) RequestOption {
+	return func(o *RequestOptions) {
+		o.headers = headers
+	}
+}
+
 // withTrace dumps requests for debugging
-func withTrace(enabled bool) requestOption {
-	return func(o *requestOptions) {
+func withTrace(enabled bool) RequestOption {
+	return func(o *RequestOptions) {
 		o.withTrace = enabled
 	}
 }
 
-func (o *requestOptions) setHeaders(req *http.Request) {
+func (o *RequestOptions) setHeaders(req *http.Request) {
 	if o.withJSON {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -112,7 +119,7 @@ func (o *requestOptions) setHeaders(req *http.Request) {
 }
 
 // traceReq dumps the content of an outgoing request for inspecting or debugging the client.
-func (o *requestOptions) traceReq(req *http.Request) {
+func (o *RequestOptions) traceReq(req *http.Request) {
 	if !o.withTrace {
 		return
 	}
@@ -122,7 +129,7 @@ func (o *requestOptions) traceReq(req *http.Request) {
 }
 
 // traceResp dumps the content of an API response for inspecting or debugging the client.
-func (o *requestOptions) traceResp(resp *http.Response) {
+func (o *RequestOptions) traceResp(resp *http.Response) {
 	if !o.withTrace {
 		return
 	}
@@ -131,8 +138,8 @@ func (o *requestOptions) traceResp(resp *http.Response) {
 	log.Printf("%s\n", dump)
 }
 
-func requestOptionsWithDefaults(opts []requestOption) *requestOptions {
-	o := &requestOptions{
+func requestOptionsWithDefaults(opts []RequestOption) *RequestOptions {
+	o := &RequestOptions{
 		reqContext: context.Background(),
 	}
 	for _, apply := range opts {

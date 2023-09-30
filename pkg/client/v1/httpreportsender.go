@@ -10,7 +10,7 @@ import (
 )
 
 type IHttpSender interface {
-	Send(serverURL string, reqBody []byte) (int, string, error)
+	Send(serverURL string, headers map[string]string, reqBody []byte) (int, string, error)
 }
 
 type HttpReportSender struct {
@@ -18,13 +18,13 @@ type HttpReportSender struct {
 }
 
 // Send - send http request. returns-> http status code, return message (jobID/OK), http/go error
-func (s *HttpReportSender) Send(serverURL string, reqBody []byte) (int, string, error) {
+func (s *HttpReportSender) Send(serverURL string, headers map[string]string, reqBody []byte) (int, string, error) {
 
 	var resp *http.Response
 	var err error
 	var bodyAsStr string
 	for i := 0; i < MAX_RETRIES; i++ {
-		resp, err = httputils.HttpPost(s.httpClient, serverURL, map[string]string{"Content-Type": "application/json"}, reqBody)
+		resp, err = httputils.HttpPost(s.httpClient, serverURL, headers, reqBody)
 		bodyAsStr = "body could not be fetched"
 		retry := err != nil
 		if resp != nil {
@@ -61,6 +61,6 @@ func (s *HttpReportSender) Send(serverURL string, reqBody []byte) (int, string, 
 type HttpReportSenderMock struct {
 }
 
-func (sm *HttpReportSenderMock) Send(serverURL string, reqBody []byte) (int, string, error) {
+func (sm *HttpReportSenderMock) Send(serverURL string, headers map[string]string, reqBody []byte) (int, string, error) {
 	return 200, "ok", nil
 }
