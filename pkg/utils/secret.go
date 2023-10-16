@@ -1,34 +1,32 @@
 package utils
 
 import (
-	"encoding/base64"
 	"os"
 )
 
-type SecretData struct {
-	Token string `mapstructure:"token"`
+const (
+	TokenSecretKey     = "token"
+	AccountIdSecretKey = "account-id"
+)
+
+type TokenSecretData struct {
+	AccountId string `mapstructure:"accountId"`
+	Token     string `mapstructure:"token"`
 }
 
-// LoadSecret loads a token from a secret file and decodes it from base64
-func LoadTokenFromSecret(path string) (*SecretData, error) {
-	secretBytes, err := os.ReadFile(path)
+// LoadTokenFromSecret loads the token and the account id from a loaded secret path
+func LoadTokenFromSecret(secretPath string) (*TokenSecretData, error) {
+	token, err := os.ReadFile(secretPath + "/" + TokenSecretKey)
 	if err != nil {
 		return nil, err
 	}
-	token, err := decodeBase64(secretBytes)
+	accountID, err := os.ReadFile(secretPath + "/" + AccountIdSecretKey)
 	if err != nil {
 		return nil, err
 	}
 
-	return &SecretData{
-		Token: token,
+	return &TokenSecretData{
+		Token:     string(token),
+		AccountId: string(accountID),
 	}, nil
-}
-
-func decodeBase64(data []byte) (string, error) {
-	decoded, err := base64.StdEncoding.DecodeString(string(data))
-	if err != nil {
-		return "", err
-	}
-	return string(decoded), nil
 }

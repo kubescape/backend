@@ -1,32 +1,37 @@
 package utils
 
 import (
-	"encoding/base64"
 	"os"
 	"testing"
 )
 
 func TestLoadTokenFromSecret(t *testing.T) {
-	// Create a temporary file with a base64-encoded token
-	tmpfile, err := os.CreateTemp(t.TempDir(), "secret-test.txt")
+	secretPath, err := os.MkdirTemp(t.TempDir(), "secret")
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	token := "mySecretToken"
-	encodedToken := base64.StdEncoding.EncodeToString([]byte(token))
-	err = os.WriteFile(tmpfile.Name(), []byte(encodedToken), 0644)
+	err = os.WriteFile(secretPath+"/"+TokenSecretKey, []byte(token), 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	accountId := "xxxxx-xxxxx"
+	err = os.WriteFile(secretPath+"/"+AccountIdSecretKey, []byte(accountId), 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Test loading the token from the temporary file
-	secretData, err := LoadTokenFromSecret(tmpfile.Name())
+	secretData, err := LoadTokenFromSecret(secretPath)
 	if err != nil {
 		t.Fatalf("LoadTokenFromSecret returned an error: %v", err)
 	}
 
 	if secretData.Token != token {
 		t.Errorf("Expected token %s, but got %s", token, secretData.Token)
+	}
+
+	if secretData.AccountId != accountId {
+		t.Errorf("Expected account id %s, but got %s", accountId, secretData.AccountId)
 	}
 }
