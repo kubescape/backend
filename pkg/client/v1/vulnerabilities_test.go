@@ -25,7 +25,7 @@ func Test_GetVulnerabilitiesReportURL(t *testing.T) {
 }
 
 func Test_GetSystemReportURL(t *testing.T) {
-	url, err := GetSystemReportURL("https://localhost:8080")
+	url, err := GetSystemReportURL("https://localhost:8080", "123")
 	assert.NoError(t, err)
-	assert.Equal(t, "https://localhost:8080/k8s/sysreport", url.String())
+	assert.Equal(t, "https://localhost:8080/k8s/sysreport?customerGUID=123", url.String())
 }

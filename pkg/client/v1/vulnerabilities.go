@@ -90,7 +90,7 @@ func GetVulnerabilitiesReportURL(eventReceiverUrl, customerGUID string) (*url.UR
 	return urlBase, nil
 }
 
-func GetSystemReportURL(eventReceiverUrl string) (*url.URL, error) {
+func GetSystemReportURL(eventReceiverUrl, customerGUID string) (*url.URL, error) {
 	scheme, host, err := utils.ParseHost(eventReceiverUrl)
 	if err != nil {
 		return nil, err
@@ -100,5 +100,9 @@ func GetSystemReportURL(eventReceiverUrl string) (*url.URL, error) {
 		Scheme: scheme,
 		Path:   v1.ReporterSystemReportPath,
 	}
+
+	q := urlBase.Query()
+	q.Add(armotypes.CustomerGuidQuery, customerGUID)
+	urlBase.RawQuery = q.Encode()
 	return urlBase, nil
 }
