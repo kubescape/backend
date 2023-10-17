@@ -91,8 +91,8 @@ func (api *KSCloudAPI) setCloudReportURL(cloudReportURL string) (err error) {
 	return err
 }
 
-func (api *KSCloudAPI) GetAttackTracks(opts ...RequestOption) ([]AttackTrack, error) {
-	rdr, _, err := api.get(api.getAttackTracksURL(), opts...)
+func (api *KSCloudAPI) GetAttackTracks() ([]AttackTrack, error) {
+	rdr, _, err := api.get(api.getAttackTracksURL())
 	if err != nil {
 		return nil, err
 	}
@@ -114,8 +114,8 @@ func (api *KSCloudAPI) getAttackTracksURL() string {
 }
 
 // GetFramework retrieves a framework by name.
-func (api *KSCloudAPI) GetFramework(frameworkName string, opts ...RequestOption) (*Framework, error) {
-	rdr, _, err := api.get(api.getFrameworkURL(frameworkName), opts...)
+func (api *KSCloudAPI) GetFramework(frameworkName string) (*Framework, error) {
+	rdr, _, err := api.get(api.getFrameworkURL(frameworkName))
 	if err != nil {
 		return nil, err
 	}
@@ -145,8 +145,8 @@ func (api *KSCloudAPI) getFrameworkURL(frameworkName string) string {
 }
 
 // GetFrameworks returns all registered frameworks.
-func (api *KSCloudAPI) GetFrameworks(opts ...RequestOption) ([]Framework, error) {
-	rdr, _, err := api.get(api.getListFrameworkURL(), opts...)
+func (api *KSCloudAPI) GetFrameworks() ([]Framework, error) {
+	rdr, _, err := api.get(api.getListFrameworkURL())
 	if err != nil {
 		return nil, err
 	}
@@ -187,8 +187,8 @@ func (api *KSCloudAPI) ListCustomFrameworks() ([]string, error) {
 }
 
 // ListFrameworks list the names of all registered frameworks.
-func (api *KSCloudAPI) ListFrameworks(opts ...RequestOption) ([]string, error) {
-	frameworks, err := api.GetFrameworks(opts...)
+func (api *KSCloudAPI) ListFrameworks() ([]string, error) {
+	frameworks, err := api.GetFrameworks()
 	if err != nil {
 		return nil, err
 	}
@@ -207,8 +207,8 @@ func (api *KSCloudAPI) ListFrameworks(opts ...RequestOption) ([]string, error) {
 }
 
 // GetExceptions returns exception policies.
-func (api *KSCloudAPI) GetExceptions(clusterName string, opts ...RequestOption) ([]PostureExceptionPolicy, error) {
-	rdr, _, err := api.get(api.getExceptionsURL(clusterName), opts...)
+func (api *KSCloudAPI) GetExceptions(clusterName string) ([]PostureExceptionPolicy, error) {
+	rdr, _, err := api.get(api.getExceptionsURL(clusterName))
 	if err != nil {
 		return nil, err
 	}
@@ -231,12 +231,12 @@ func (api *KSCloudAPI) getExceptionsURL(clusterName string) string {
 }
 
 // GetAccountConfig yields the account configuration.
-func (api *KSCloudAPI) GetAccountConfig(clusterName string, opts ...RequestOption) (*CustomerConfig, error) {
+func (api *KSCloudAPI) GetAccountConfig(clusterName string) (*CustomerConfig, error) {
 	if api.accountID == "" {
 		return &CustomerConfig{}, nil
 	}
 
-	rdr, _, err := api.get(api.getAccountConfig(clusterName), opts...)
+	rdr, _, err := api.get(api.getAccountConfig(clusterName))
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +245,7 @@ func (api *KSCloudAPI) GetAccountConfig(clusterName string, opts ...RequestOptio
 	accountConfig, err := utils.Decode[CustomerConfig](rdr)
 	if err != nil {
 		// retry with default scope
-		rdr, _, err = api.get(api.getAccountConfigDefault(clusterName), opts...)
+		rdr, _, err = api.get(api.getAccountConfigDefault(clusterName))
 		if err != nil {
 			return nil, err
 		}
@@ -290,8 +290,8 @@ func (api *KSCloudAPI) getAccountConfigDefault(clusterName string) string {
 }
 
 // GetControlsInputs returns the controls inputs configured in the account configuration.
-func (api *KSCloudAPI) GetControlsInputs(clusterName string, opts ...RequestOption) (map[string][]string, error) {
-	accountConfig, err := api.GetAccountConfig(clusterName, opts...)
+func (api *KSCloudAPI) GetControlsInputs(clusterName string) (map[string][]string, error) {
+	accountConfig, err := api.GetAccountConfig(clusterName)
 	if err != nil {
 		return nil, err
 	}
@@ -334,13 +334,13 @@ func (api *KSCloudAPI) postReportURL(cluster, reportID string) string {
 
 // defaultRequestOptions adds standard authentication headers to all requests
 func (api *KSCloudAPI) defaultRequestOptions(opts []RequestOption) *RequestOptions {
-	optionsWithDefaults := append(make([]RequestOption, 0, 4),
+	optionsWithDefaults := []RequestOption{
 		withTrace(api.withTrace),
 		WithHeaders(map[string]string{
 			v1.RequestTokenHeader: api.token,
 		}),
 		WithContentJSON(true),
-	)
+	}
 	optionsWithDefaults = append(optionsWithDefaults, opts...)
 
 	return requestOptionsWithDefaults(optionsWithDefaults)
