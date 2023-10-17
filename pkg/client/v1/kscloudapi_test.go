@@ -36,6 +36,7 @@ func TestKSCloudAPI(t *testing.T) {
 		srv.Root(),
 		srv.Root(),
 		"account",
+		"",
 		append(
 			testOptions,
 		)...,
@@ -188,6 +189,7 @@ func TestKSCloudAPI(t *testing.T) {
 					srv.Root(),
 					"",
 					"",
+					"",
 				)
 				require.NoError(t, err)
 
@@ -253,6 +255,7 @@ func TestKSCloudAPI(t *testing.T) {
 			srv.Root(),
 			"",
 			"",
+			"",
 		)
 		require.NoError(t, err)
 
@@ -307,6 +310,7 @@ func TestKSCloudAPI(t *testing.T) {
 			errSrv.Root(),
 			"",
 			"account",
+			"",
 		)
 		require.NoError(t, err)
 
@@ -356,6 +360,7 @@ func TestKSCloudAPI(t *testing.T) {
 			errSrv.Root(),
 			"",
 			"account",
+			"",
 		)
 		require.NoError(t, err)
 

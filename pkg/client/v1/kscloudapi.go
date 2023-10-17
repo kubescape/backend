@@ -20,6 +20,7 @@ var (
 type KSCloudAPI struct {
 	*KsCloudOptions
 	accountID    string
+	token        string
 	apiHost      string
 	apiScheme    string
 	reportHost   string
@@ -35,10 +36,11 @@ func NewEmptyKSCloudAPI(opts ...KSCloudOption) *KSCloudAPI {
 	return api
 }
 
-func NewKSCloudAPI(apiURL, reportURL, accountID string, opts ...KSCloudOption) (*KSCloudAPI, error) {
+func NewKSCloudAPI(apiURL, reportURL, accountID, token string, opts ...KSCloudOption) (*KSCloudAPI, error) {
 	api := &KSCloudAPI{
 		KsCloudOptions: ksCloudOptionsWithDefaults(opts),
 		accountID:      accountID,
+		token:          token,
 	}
 
 	if err := api.setCloudAPIURL(apiURL); err != nil {
@@ -54,6 +56,8 @@ func NewKSCloudAPI(apiURL, reportURL, accountID string, opts ...KSCloudOption) (
 
 // GetAccountID returns the customer account's GUID.
 func (api *KSCloudAPI) GetAccountID() string { return api.accountID }
+
+func (api *KSCloudAPI) GetToken() string { return api.token }
 
 func (api *KSCloudAPI) GetCloudReportURL() string {
 	if api.reportHost == "" {
@@ -332,6 +336,10 @@ func (api *KSCloudAPI) postReportURL(cluster, reportID string) string {
 func (api *KSCloudAPI) defaultRequestOptions(opts []RequestOption) *RequestOptions {
 	optionsWithDefaults := append(make([]RequestOption, 0, 4),
 		withTrace(api.withTrace),
+		WithHeaders(map[string]string{
+			v1.RequestTokenHeader: api.token,
+		}),
+		WithContentJSON(true),
 	)
 	optionsWithDefaults = append(optionsWithDefaults, opts...)
 
