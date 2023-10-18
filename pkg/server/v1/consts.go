@@ -31,4 +31,6 @@ const (
 	QueryParamReport        = "reportGUID"
 	QueryParamJobID         = "jobID"
 	QueryParamRegistryName  = "registryName"
+
+	RequestTokenHeader = "X-API-TOKEN"
 )

@@ -13,6 +13,7 @@ func TestBuildURL(t *testing.T) {
 		"api.example.com",
 		"report.example.com",
 		"",
+		"",
 	)
 	require.NoError(t, err)
 
@@ -24,7 +25,7 @@ func TestBuildURL(t *testing.T) {
 	})
 
 	t.Run("should build API URL with query params on http host", func(t *testing.T) {
-		ku, err := NewKSCloudAPI("http://api.example.com", "", "")
+		ku, err := NewKSCloudAPI("http://api.example.com", "", "", "")
 
 		require.NoError(t, err)
 		require.Equal(t,
