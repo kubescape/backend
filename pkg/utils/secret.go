@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 )
 
@@ -14,19 +15,25 @@ type TokenSecretData struct {
 	Token   string `mapstructure:"token"`
 }
 
-// LoadTokenFromFile loads the token and the account id from a file
+// LoadTokenFromFile loads the token and the account from a file
 func LoadTokenFromFile(secretPath string) (*TokenSecretData, error) {
-	token, err := os.ReadFile(secretPath + "/" + TokenSecretKey)
-	if err != nil {
-		return nil, err
-	}
-	account, err := os.ReadFile(secretPath + "/" + AccountSecretKey)
-	if err != nil {
-		return nil, err
+	tokenPath := secretPath + "/" + TokenSecretKey
+	accountPath := secretPath + "/" + AccountSecretKey
+
+	// if both files are missing, return an error as we need at least one of them
+	_, errTokenPath := os.Stat(tokenPath)
+	_, errAccountPath := os.Stat(accountPath)
+	if os.IsNotExist(errTokenPath) && os.IsNotExist(errAccountPath) {
+		return nil, fmt.Errorf("token and account files are missing in path %s", secretPath)
 	}
 
-	return &TokenSecretData{
-		Token:   string(token),
-		Account: string(account),
-	}, nil
+	t := &TokenSecretData{}
+	if token, err := os.ReadFile(tokenPath); err == nil {
+		t.Token = string(token)
+	}
+	if account, err := os.ReadFile(accountPath); err == nil {
+		t.Account = string(account)
+	}
+
+	return t, nil
 }

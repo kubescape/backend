@@ -3,6 +3,8 @@ package utils
 import (
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLoadTokenFromFile(t *testing.T) {
@@ -10,28 +12,26 @@ func TestLoadTokenFromFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	// When account and token are missing, return an error
+	_, err = LoadTokenFromFile(secretPath)
+	assert.Error(t, err)
+
+	// create token file and test that the token is loaded
 	token := "mySecretToken"
 	err = os.WriteFile(secretPath+"/"+TokenSecretKey, []byte(token), 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err)
+	secretData, err := LoadTokenFromFile(secretPath)
+	assert.NoError(t, err)
+	assert.Equal(t, token, secretData.Token)
+	assert.Empty(t, secretData.Account)
+
+	// create account file and test that the account is loaded
 	account := "xxxxx-xxxxx"
 	err = os.WriteFile(secretPath+"/"+AccountSecretKey, []byte(account), 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Test loading the token from the temporary file
-	secretData, err := LoadTokenFromFile(secretPath)
-	if err != nil {
-		t.Fatalf("LoadTokenFromFile returned an error: %v", err)
-	}
-
-	if secretData.Token != token {
-		t.Errorf("Expected token %s, but got %s", token, secretData.Token)
-	}
-
-	if secretData.Account != account {
-		t.Errorf("Expected account %s, but got %s", account, secretData.Account)
-	}
+	assert.NoError(t, err)
+	secretData, err = LoadTokenFromFile(secretPath)
+	assert.NoError(t, err)
+	assert.Equal(t, token, secretData.Token)
+	assert.Equal(t, account, secretData.Account)
 }
