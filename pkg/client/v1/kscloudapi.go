@@ -336,11 +336,16 @@ func (api *KSCloudAPI) postReportURL(cluster, reportID string) string {
 func (api *KSCloudAPI) defaultRequestOptions(opts []RequestOption) *RequestOptions {
 	optionsWithDefaults := []RequestOption{
 		withTrace(api.withTrace),
-		WithHeaders(map[string]string{
-			v1.RequestTokenHeader: api.token,
-		}),
 		WithContentJSON(true),
 	}
+
+	if api.token != "" {
+		optionsWithDefaults = append(optionsWithDefaults,
+			WithHeaders(map[string]string{
+				v1.RequestTokenHeader: api.token,
+			}))
+	}
+
 	optionsWithDefaults = append(optionsWithDefaults, opts...)
 
 	return requestOptionsWithDefaults(optionsWithDefaults)

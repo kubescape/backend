@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestLoadTokenFromSecret(t *testing.T) {
+func TestLoadTokenFromFile(t *testing.T) {
 	secretPath, err := os.MkdirTemp(t.TempDir(), "secret")
 	if err != nil {
 		t.Fatal(err)
@@ -15,23 +15,23 @@ func TestLoadTokenFromSecret(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	accountId := "xxxxx-xxxxx"
-	err = os.WriteFile(secretPath+"/"+AccountIdSecretKey, []byte(accountId), 0644)
+	account := "xxxxx-xxxxx"
+	err = os.WriteFile(secretPath+"/"+AccountSecretKey, []byte(account), 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Test loading the token from the temporary file
-	secretData, err := LoadTokenFromSecret(secretPath)
+	secretData, err := LoadTokenFromFile(secretPath)
 	if err != nil {
-		t.Fatalf("LoadTokenFromSecret returned an error: %v", err)
+		t.Fatalf("LoadTokenFromFile returned an error: %v", err)
 	}
 
 	if secretData.Token != token {
 		t.Errorf("Expected token %s, but got %s", token, secretData.Token)
 	}
 
-	if secretData.AccountId != accountId {
-		t.Errorf("Expected account id %s, but got %s", accountId, secretData.AccountId)
+	if secretData.Account != account {
+		t.Errorf("Expected account %s, but got %s", account, secretData.Account)
 	}
 }
