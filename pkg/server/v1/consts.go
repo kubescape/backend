@@ -32,5 +32,5 @@ const (
 	QueryParamJobID         = "jobID"
 	QueryParamRegistryName  = "registryName"
 
-	RequestTokenHeader = "X-API-TOKEN"
+	AccessKeyHeader = "X-API-TOKEN"
 )

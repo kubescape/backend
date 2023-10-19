@@ -37,9 +37,7 @@ func TestKSCloudAPI(t *testing.T) {
 		srv.Root(),
 		"account",
 		"",
-		append(
-			testOptions,
-		)...,
+		testOptions...,
 	)
 	require.NoError(t, err)
 
@@ -243,9 +241,8 @@ func TestKSCloudAPI(t *testing.T) {
 			)
 
 			submitted := mockPostureReport(t, reportID, cluster)
-			require.NoError(t,
-				ks.SubmitReport(submitted),
-			)
+			_, err := ks.SubmitReport(submitted)
+			require.NoError(t, err)
 		})
 	})
 

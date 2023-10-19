@@ -20,7 +20,7 @@ var (
 type KSCloudAPI struct {
 	*KsCloudOptions
 	accountID    string
-	token        string
+	accessKey    string
 	apiHost      string
 	apiScheme    string
 	reportHost   string
@@ -36,11 +36,11 @@ func NewEmptyKSCloudAPI(opts ...KSCloudOption) *KSCloudAPI {
 	return api
 }
 
-func NewKSCloudAPI(apiURL, reportURL, accountID, token string, opts ...KSCloudOption) (*KSCloudAPI, error) {
+func NewKSCloudAPI(apiURL, reportURL, accountID, accessKey string, opts ...KSCloudOption) (*KSCloudAPI, error) {
 	api := &KSCloudAPI{
 		KsCloudOptions: ksCloudOptionsWithDefaults(opts),
 		accountID:      accountID,
-		token:          token,
+		accessKey:      accessKey,
 	}
 
 	if err := api.setCloudAPIURL(apiURL); err != nil {
@@ -57,7 +57,7 @@ func NewKSCloudAPI(apiURL, reportURL, accountID, token string, opts ...KSCloudOp
 // GetAccountID returns the customer account's GUID.
 func (api *KSCloudAPI) GetAccountID() string { return api.accountID }
 
-func (api *KSCloudAPI) GetToken() string { return api.token }
+func (api *KSCloudAPI) GetAccessKey() string { return api.accessKey }
 
 func (api *KSCloudAPI) GetCloudReportURL() string {
 	if api.reportHost == "" {
@@ -310,15 +310,23 @@ func (api *KSCloudAPI) ListControls() ([]string, error) {
 }
 
 // SubmitReport uploads a posture report.
-func (api *KSCloudAPI) SubmitReport(report *PostureReport) error {
+func (api *KSCloudAPI) SubmitReport(report *PostureReport) (string, error) {
 	jazon, err := json.Marshal(report)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	_, _, err = api.post(api.postReportURL(report.ClusterName, report.ReportID), jazon, WithContentJSON(true))
+	rdr, _, err := api.post(api.postReportURL(report.ClusterName, report.ReportID), jazon, WithContentJSON(true))
+	if err != nil {
+		return "", err
+	}
+	defer rdr.Close()
 
-	return err
+	b, err := io.ReadAll(rdr)
+	if err == nil {
+		return string(b), nil
+	}
+	return "", err
 }
 
 func (api *KSCloudAPI) postReportURL(cluster, reportID string) string {
@@ -339,10 +347,10 @@ func (api *KSCloudAPI) defaultRequestOptions(opts []RequestOption) *RequestOptio
 		WithContentJSON(true),
 	}
 
-	if api.token != "" {
+	if api.accessKey != "" {
 		optionsWithDefaults = append(optionsWithDefaults,
 			WithHeaders(map[string]string{
-				v1.RequestTokenHeader: api.token,
+				v1.AccessKeyHeader: api.accessKey,
 			}))
 	}
 
