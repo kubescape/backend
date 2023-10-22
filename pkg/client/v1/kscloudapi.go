@@ -43,15 +43,23 @@ func NewKSCloudAPI(apiURL, reportURL, accountID, accessKey string, opts ...KSClo
 		accessKey:      accessKey,
 	}
 
-	if err := api.setCloudAPIURL(apiURL); err != nil {
+	if err := api.SetCloudAPIURL(apiURL); err != nil {
 		return nil, err
 	}
 
-	if err := api.setCloudReportURL(reportURL); err != nil {
+	if err := api.SetCloudReportURL(reportURL); err != nil {
 		return nil, err
 	}
 
 	return api, nil
+}
+
+func (api *KSCloudAPI) SetAccountID(value string) {
+	api.accountID = value
+}
+
+func (api *KSCloudAPI) SetAccessKey(value string) {
+	api.accessKey = value
 }
 
 // GetAccountID returns the customer account's GUID.
@@ -74,7 +82,7 @@ func (api *KSCloudAPI) GetCloudAPIURL() string {
 	return api.apiScheme + "://" + api.apiHost
 }
 
-func (api *KSCloudAPI) setCloudAPIURL(cloudAPIURL string) (err error) {
+func (api *KSCloudAPI) SetCloudAPIURL(cloudAPIURL string) (err error) {
 	if cloudAPIURL == "" {
 		return nil
 	}
@@ -82,7 +90,7 @@ func (api *KSCloudAPI) setCloudAPIURL(cloudAPIURL string) (err error) {
 	return err
 }
 
-func (api *KSCloudAPI) setCloudReportURL(cloudReportURL string) (err error) {
+func (api *KSCloudAPI) SetCloudReportURL(cloudReportURL string) (err error) {
 	if cloudReportURL == "" {
 		return nil
 	}

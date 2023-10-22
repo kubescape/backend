@@ -268,28 +268,28 @@ func TestKSCloudAPI(t *testing.T) {
 
 		t.Run("shouldn't set invalid report URL", func(t *testing.T) {
 			malformedUrl := "http://%41:8080/"
-			err := kno.setCloudReportURL(malformedUrl)
+			err := kno.SetCloudReportURL(malformedUrl)
 			require.Error(t, err)
 			require.Equal(t, "", kno.GetCloudReportURL())
 		})
 
 		t.Run("shouldn't set invalid API URL", func(t *testing.T) {
 			malformedUrl := "http://%41:8080/"
-			err := kno.setCloudAPIURL(malformedUrl)
+			err := kno.SetCloudAPIURL(malformedUrl)
 			require.Error(t, err)
 			require.Equal(t, "", kno.GetCloudAPIURL())
 		})
 
 		t.Run("should get&set report URL", func(t *testing.T) {
 			str := "https://report.example.com"
-			err := kno.setCloudReportURL(str)
+			err := kno.SetCloudReportURL(str)
 			require.NoError(t, err)
 			require.Equal(t, str, kno.GetCloudReportURL())
 		})
 
 		t.Run("should get&set API URL", func(t *testing.T) {
 			str := "https://api.example.com"
-			err := kno.setCloudAPIURL(str)
+			err := kno.SetCloudAPIURL(str)
 			require.NoError(t, err)
 			require.Equal(t, str, kno.GetCloudAPIURL())
 		})
