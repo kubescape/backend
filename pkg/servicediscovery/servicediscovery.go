@@ -8,7 +8,10 @@ import (
 	"github.com/kubescape/backend/pkg/servicediscovery/schema"
 )
 
-var supporterVersions = []string{"v1"}
+var supporterVersions = []string{
+	"v1",
+	"v2",
+}
 
 // WriteServiceDiscoveryResponse writes the service discovery response to the HTTP response writer
 // This is used by the service discovery server to respond to HTTP GET requests

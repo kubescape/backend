@@ -5,5 +5,5 @@ Service discovery defines the client & server behavior for discovery of a Kubesc
 In order to test your service discovery backend endpoint run:
 
 ```bash
-go test ./... -url domain.example
+go test ./... -url domain.example -version v1
 ```

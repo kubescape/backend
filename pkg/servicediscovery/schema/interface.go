@@ -11,11 +11,13 @@ type IBackendServices interface {
 	SetGatewayUrl(string)
 	SetApiServerUrl(string)
 	SetMetricsUrl(string)
+	SetSynchronizerUrl(string)
 	GetReportReceiverHttpUrl() string
 	GetReportReceiverWebsocketUrl() string
 	GetGatewayUrl() string
 	GetApiServerUrl() string
 	GetMetricsUrl() string
+	GetSynchronizerUrl() string
 }
 
 type IServiceDiscoveryClient interface {

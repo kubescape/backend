@@ -1,20 +1,20 @@
-package v1
+package v2
 
 import "github.com/kubescape/backend/pkg/servicediscovery/schema"
 
-type ServiceDiscoveryClientV1 struct {
+type ServiceDiscoveryClientV2 struct {
 	host   string
 	scheme string
 	path   string
 }
 
-type ServiceDiscoveryServerV1 struct {
+type ServiceDiscoveryServerV2 struct {
 	version        string
-	services       ServicesV1
+	services       ServicesV2
 	cachedResponse []byte
 }
 
-type ServicesV1 struct {
+type ServicesV2 struct {
 	schema.IBackendServices `json:"-"`
 
 	EventReceiverHttpUrl      string `json:"event-receiver-http"`
@@ -22,12 +22,13 @@ type ServicesV1 struct {
 	GatewayUrl                string `json:"gateway"`
 	ApiServerUrl              string `json:"api-server"`
 	MetricsUrl                string `json:"metrics"`
+	SynchronizerUrl           string `json:"synchronizer"`
 }
 
-type ServiceDiscoveryFileV1 struct {
+type ServiceDiscoveryFileV2 struct {
 	path string
 }
 
-type ServiceDiscoveryStreamV1 struct {
+type ServiceDiscoveryStreamV2 struct {
 	data []byte
 }
