@@ -15,7 +15,7 @@ type ServiceDiscoveryServerV2 struct {
 }
 
 type ServicesV2 struct {
-	schema.IBackendServices
+	schema.IBackendServices `json:"-"`
 
 	EventReceiverHttpUrl      string `json:"event-receiver-http"`
 	EventReceiverWebsocketUrl string `json:"event-receiver-ws"`
