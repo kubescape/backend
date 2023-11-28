@@ -12,7 +12,6 @@
       "guid": "",
       "name": "Access container service account",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "container",
