@@ -44,4 +44,3 @@ jobs:
         args: --timeout 10m --build-tags=static
         only-new-issues: true
 
-
