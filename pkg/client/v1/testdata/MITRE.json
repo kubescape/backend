@@ -2,7 +2,6 @@
   "guid": "",
   "name": "MITRE",
   "attributes": {
-    "armoBuiltin": true
   },
   "creationTime": "",
   "description": "Testing MITRE for Kubernetes as suggested by microsoft in https://www.microsoft.com/security/blog/wp-content/uploads/2020/04/k8s-matrix.png",
@@ -40,7 +39,6 @@
           "guid": "",
           "name": "access-container-service-account",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Credential Access::Access container service account, Lateral Movement::Container service account",
             "useUntilKubescapeVersion": "v1.0.133"
           },
@@ -114,7 +112,6 @@
           "guid": "",
           "name": "access-container-service-account-v1",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Credential Access::Access container service account, Lateral Movement::Container service account",
             "useFromKubescapeVersion": "v1.0.133"
           },
