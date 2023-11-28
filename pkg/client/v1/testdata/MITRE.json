@@ -190,7 +190,6 @@
       "guid": "",
       "name": "Access Kubernetes dashboard",
       "attributes": {
-        "armoBuiltin": true,
         "controlTypeTags": [
           "compliance"
         ],
@@ -210,7 +209,6 @@
           "guid": "",
           "name": "rule-access-dashboard",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Lateral Movement::Access Kubernetes dashboard, Discovery::Access Kubernetes dashboard",
             "useUntilKubescapeVersion": "v1.0.133"
           },
@@ -244,7 +242,6 @@
           "guid": "",
           "name": "rule-access-dashboard-subject-v1",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Lateral Movement::Access Kubernetes dashboard, Discovery::Access Kubernetes dashboard",
             "resourcesAggregator": "subject-role-rolebinding",
             "useFromKubescapeVersion": "v1.0.133"
@@ -281,7 +278,6 @@
           "guid": "",
           "name": "rule-access-dashboard-wl-v1",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Lateral Movement::Access Kubernetes dashboard, Discovery::Access Kubernetes dashboard",
             "useFromKubescapeVersion": "v1.0.133"
           },
@@ -348,7 +344,6 @@
       "guid": "",
       "name": "Applications credentials in configuration files",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "kubeapi",
@@ -383,7 +378,6 @@
           "guid": "",
           "name": "rule-credentials-in-env-var",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Credential access::Applications credentials in configuration files, Lateral Movement::Applications credentials in configuration files"
           },
           "creationTime": "",
@@ -455,7 +449,6 @@
           "guid": "",
           "name": "rule-credentials-configmap",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Credential access::Applications credentials in configuration files, Lateral Movement::Applications credentials in configuration files"
           },
           "creationTime": "",
@@ -514,7 +507,6 @@
       "guid": "",
       "name": "Cluster-admin binding",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "kubeapi",
@@ -543,7 +535,6 @@
           "guid": "",
           "name": "rule-list-all-cluster-admins",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Privilege Escalation::Cluster-admin binding",
             "useUntilKubescapeVersion": "v1.0.133"
           },
@@ -583,7 +574,6 @@
           "guid": "",
           "name": "rule-list-all-cluster-admins-v1",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Privilege Escalation::Cluster-admin binding",
             "resourcesAggregator": "subject-role-rolebinding",
             "useFromKubescapeVersion": "v1.0.133"
@@ -627,7 +617,6 @@
       "guid": "",
       "name": "Cluster internal networking",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "container",
@@ -655,7 +644,6 @@
           "guid": "",
           "name": "internal-networking",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Lateral Movement::Container internal networking, Discovery::Network mapping"
           },
           "creationTime": "",
@@ -704,7 +692,6 @@
       "guid": "",
       "name": "Exec into container",
       "attributes": {
-        "armoBuiltin": true,
         "controlTypeTags": [
           "compliance",
           "security-impact"
@@ -724,7 +711,6 @@
           "guid": "",
           "name": "exec-into-container",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Privilege Escalation::Exec into container",
             "useUntilKubescapeVersion": "v1.0.133"
           },
@@ -764,7 +750,6 @@
           "guid": "",
           "name": "exec-into-container-v1",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Privilege Escalation::Exec into container",
             "resourcesAggregator": "subject-role-rolebinding",
             "useFromKubescapeVersion": "v1.0.133"
@@ -808,7 +793,6 @@
       "guid": "",
       "name": "Exposed sensitive interfaces",
       "attributes": {
-        "armoBuiltin": true,
         "controlTypeTags": [
           "compliance"
         ],
@@ -826,7 +810,6 @@
           "guid": "",
           "name": "exposed-sensitive-interfaces",
           "attributes": {
-            "armoBuiltin": true,
             "microsoftK8sThreatMatrix": "Initial access::Exposed sensitive interfaces",
             "useUntilKubescapeVersion": "v1.0.133"
           },
@@ -898,7 +881,6 @@
           "guid": "",
           "name": "exposed-sensitive-interfaces-v1",
           "attributes": {
-            "armoBuiltin": true,
             "microsoftK8sThreatMatrix": "Initial access::Exposed sensitive interfaces",
             "useFromKubescapeVersion": "v1.0.133"
           },
@@ -977,7 +959,6 @@
       "guid": "",
       "name": "HostPath mount",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "container",
@@ -1004,7 +985,6 @@
           "guid": "",
           "name": "alert-any-hostpath",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Privilege Escalation::hostPath mount"
           },
           "creationTime": "",
@@ -1068,7 +1048,6 @@
       "guid": "",
       "name": "Instance Metadata API",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "container",
@@ -1097,7 +1076,6 @@
           "guid": "",
           "name": "instance-metadata-api-access",
           "attributes": {
-            "armoBuiltin": true,
             "hostSensorRule": "true",
             "m$K8sThreatMatrix": "Credential Access::Instance Metadata API"
           },
@@ -1137,7 +1115,6 @@
       "guid": "",
       "name": "Kubernetes CronJob",
       "attributes": {
-        "armoBuiltin": true,
         "controlTypeTags": [
           "compliance"
         ],
@@ -1155,7 +1132,6 @@
           "guid": "",
           "name": "rule-deny-cronjobs",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Persistence::Kubernetes Cronjob"
           },
           "creationTime": "",
@@ -1193,7 +1169,6 @@
       "guid": "",
       "name": "List Kubernetes secrets",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "kubeapi",
@@ -1221,7 +1196,6 @@
           "guid": "",
           "name": "rule-can-list-get-secrets",
           "attributes": {
-            "armoBuiltin": true,
             "microsoftK8sThreatMatrix": "Discovery::Access the K8s API server",
             "useUntilKubescapeVersion": "v1.0.133"
           },
@@ -1261,7 +1235,6 @@
           "guid": "",
           "name": "rule-can-list-get-secrets-v1",
           "attributes": {
-            "armoBuiltin": true,
             "microsoftK8sThreatMatrix": "Discovery::Access the K8s API server",
             "resourcesAggregator": "subject-role-rolebinding",
             "useFromKubescapeVersion": "v1.0.133"
@@ -1305,7 +1278,6 @@
       "guid": "",
       "name": "Mount service principal",
       "attributes": {
-        "armoBuiltin": true,
         "controlTypeTags": [
           "compliance"
         ],
@@ -1390,7 +1362,6 @@
       "guid": "",
       "name": "Privileged container",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "container",
@@ -1416,7 +1387,6 @@
           "guid": "",
           "name": "rule-privilege-escalation",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Privilege Escalation::privileged container",
             "mitre": "Privilege Escalation",
             "mitreCode": "TA0004"
@@ -1482,7 +1452,6 @@
       "guid": "",
       "name": "SSH server running inside container",
       "attributes": {
-        "armoBuiltin": true,
         "controlTypeTags": [
           "compliance"
         ],
@@ -1500,7 +1469,6 @@
           "guid": "",
           "name": "rule-can-ssh-to-pod",
           "attributes": {
-            "armoBuiltin": true,
             "microsoftK8sThreatMatrix": "Execution::SSH server running inside container",
             "useUntilKubescapeVersion": "v1.0.133"
           },
@@ -1560,7 +1528,6 @@
           "guid": "",
           "name": "rule-can-ssh-to-pod-v1",
           "attributes": {
-            "armoBuiltin": true,
             "microsoftK8sThreatMatrix": "Execution::SSH server running inside container",
             "useFromKubescapeVersion": "v1.0.133"
           },
@@ -1627,7 +1594,6 @@
       "guid": "",
       "name": "Writable hostPath mount",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "container",
@@ -1658,7 +1624,6 @@
           "guid": "",
           "name": "alert-rw-hostpath",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Persistence::Writable hostPath mount, Lateral Movement::Writable volume mounts on the host"
           },
           "creationTime": "",
@@ -1729,7 +1694,6 @@
       "guid": "",
       "name": "Malicious admission controller (mutating)",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "kubeapi",
@@ -1756,7 +1720,6 @@
           "guid": "",
           "name": "list-all-mutating-webhooks",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Persistence::Malicious admission controller"
           },
           "creationTime": "",
@@ -1794,7 +1757,6 @@
       "guid": "",
       "name": "Malicious admission controller (validating)",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "kubeapi",
@@ -1822,7 +1784,6 @@
           "guid": "",
           "name": "list-all-validating-webhooks",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Credential Access::Malicious admission controller"
           },
           "creationTime": "",
@@ -1860,7 +1821,6 @@
       "guid": "",
       "name": "Delete Kubernetes events",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "kubeapi",
@@ -1888,7 +1848,6 @@
           "guid": "",
           "name": "rule-can-delete-k8s-events",
           "attributes": {
-            "armoBuiltin": true,
             "microsoftK8sThreatMatrix": "Defense Evasion::Delete K8S events",
             "useUntilKubescapeVersion": "v1.0.133"
           },
@@ -1928,7 +1887,6 @@
           "guid": "",
           "name": "rule-can-delete-k8s-events-v1",
           "attributes": {
-            "armoBuiltin": true,
             "microsoftK8sThreatMatrix": "Defense Evasion::Delete K8S events",
             "resourcesAggregator": "subject-role-rolebinding",
             "useFromKubescapeVersion": "v1.0.133"
@@ -1972,7 +1930,6 @@
       "guid": "",
       "name": "CoreDNS poisoning",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "kubeapi",
@@ -1998,7 +1955,6 @@
           "guid": "",
           "name": "rule-can-update-configmap",
           "attributes": {
-            "armoBuiltin": true,
             "microsoftK8sThreatMatrix": "Lateral Movement::CoreDNS poisoning",
             "useUntilKubescapeVersion": "v1.0.133"
           },
@@ -2039,7 +1995,6 @@
           "guid": "",
           "name": "rule-can-update-configmap-v1",
           "attributes": {
-            "armoBuiltin": true,
             "microsoftK8sThreatMatrix": "Lateral Movement::CoreDNS poisoning",
             "resourcesAggregator": "subject-role-rolebinding",
             "useFromKubescapeVersion": "v1.0.133"
@@ -2083,7 +2038,6 @@
       "guid": "",
       "name": "Data Destruction",
       "attributes": {
-        "armoBuiltin": true,
         "controlTypeTags": [
           "compliance"
         ],
@@ -2102,7 +2056,6 @@
           "guid": "",
           "name": "rule-excessive-delete-rights",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Impact::Data Destruction",
             "useUntilKubescapeVersion": "v1.0.133"
           },
@@ -2138,7 +2091,6 @@
           "guid": "",
           "name": "rule-excessive-delete-rights-v1",
           "attributes": {
-            "armoBuiltin": true,
             "m$K8sThreatMatrix": "Impact::Data Destruction",
             "resourcesAggregator": "subject-role-rolebinding",
             "useFromKubescapeVersion": "v1.0.133"
@@ -2182,7 +2134,6 @@
       "guid": "",
       "name": "CVE-2021-25741 - Using symlink for arbitrary host file system access.",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "container",
@@ -2271,7 +2222,6 @@
       "guid": "",
       "name": "CVE-2021-25742-nginx-ingress-snippet-annotation-vulnerability",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "container",
@@ -2334,7 +2284,6 @@
       "guid": "",
       "name": "Audit logs enabled",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "container",
@@ -2400,7 +2349,6 @@
           "guid": "",
           "name": "k8s-audit-logs-enabled-native",
           "attributes": {
-            "armoBuiltin": true,
             "resourcesAggregator": "apiserver-pod",
             "useFromKubescapeVersion": "v1.0.133"
           },
@@ -2440,7 +2388,6 @@
       "guid": "",
       "name": "Secret/ETCD encryption enabled",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "node",
@@ -2506,7 +2453,6 @@
           "guid": "",
           "name": "etcd-encryption-native",
           "attributes": {
-            "armoBuiltin": true,
             "resourcesAggregator": "apiserver-pod",
             "useFromKubescapeVersion": "v1.0.133"
           },
@@ -2546,7 +2492,6 @@
       "guid": "",
       "name": "PSP enabled",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "kubeapi",
@@ -2612,7 +2557,6 @@
           "guid": "",
           "name": "psp-enabled-native",
           "attributes": {
-            "armoBuiltin": true,
             "resourcesAggregator": "apiserver-pod",
             "useFromKubescapeVersion": "v1.0.133"
           },
@@ -2652,7 +2596,6 @@
       "guid": "",
       "name": "Disable anonymous access to Kubelet service",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "kubeapi",
@@ -2676,7 +2619,6 @@
           "guid": "",
           "name": "anonymous-requests-to-kubelet-service-updated",
           "attributes": {
-            "armoBuiltin": true,
             "hostSensorRule": "true"
           },
           "creationTime": "",
@@ -2721,7 +2663,6 @@
       "guid": "",
       "name": "Enforce Kubelet client TLS authentication",
       "attributes": {
-        "armoBuiltin": true,
         "attackTracks": [
           {
             "attackTrack": "node",
@@ -2745,7 +2686,6 @@
           "guid": "",
           "name": "enforce-kubelet-client-tls-authentication",
           "attributes": {
-            "armoBuiltin": true,
             "hostSensorRule": "true"
           },
           "creationTime": "",
