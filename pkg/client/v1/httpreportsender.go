@@ -17,9 +17,8 @@ type HttpReportSender struct {
 	httpClient httputils.IHttpClient
 }
 
-// Send - send http request. returns-> http status code, return message (jobID/OK), http/go error
+// Send sends an HTTP request to a server and returns the HTTP status code, return message, and any errors.
 func (s *HttpReportSender) Send(serverURL string, headers map[string]string, reqBody []byte) (int, string, error) {
-
 	var resp *http.Response
 	var err error
 	var bodyAsStr string
@@ -42,20 +41,16 @@ func (s *HttpReportSender) Send(serverURL string, headers map[string]string, req
 		if !retry {
 			break
 		}
-		//else err != nil
-		e := fmt.Errorf("attempt #%d - Failed posting report. Url: '%s', reason: '%s' report: '%s' response: '%s'", i, serverURL, err.Error(), string(reqBody), bodyAsStr)
 
 		if i == MAX_RETRIES-1 {
-			return 500, e.Error(), err
+			return 500, "", err
 		}
-		//wait 5 secs between retries
 		time.Sleep(RETRY_DELAY)
 	}
 	if resp == nil {
 		return 500, bodyAsStr, fmt.Errorf("failed to send report, empty response: %w", err)
 	}
 	return resp.StatusCode, bodyAsStr, nil
-
 }
 
 type HttpReportSenderMock struct {
