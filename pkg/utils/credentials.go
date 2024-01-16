@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 const (
@@ -29,10 +30,10 @@ func LoadCredentialsFromFile(secretPath string) (*Credentials, error) {
 
 	t := &Credentials{}
 	if accessKey, err := os.ReadFile(accessKeyPath); err == nil {
-		t.AccessKey = string(accessKey)
+		t.AccessKey = strings.TrimSuffix(string(accessKey), "\n")
 	}
 	if account, err := os.ReadFile(accountPath); err == nil {
-		t.Account = string(account)
+		t.Account = strings.TrimSuffix(string(account), "\n")
 	}
 
 	return t, nil
