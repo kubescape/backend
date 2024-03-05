@@ -9,13 +9,15 @@ import (
 	"strings"
 
 	"github.com/armosec/utils-go/boolutils"
-	utils "github.com/kubescape/backend/pkg/utils"
-	logger "github.com/kubescape/go-logger"
+	"github.com/kubescape/backend/pkg/utils"
+	"github.com/kubescape/go-logger"
 	"github.com/kubescape/go-logger/helpers"
 	"github.com/kubescape/kubescape/v3/core/cautils/getter"
 	"github.com/mattn/go-isatty"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/mod/semver"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 const SKIP_VERSION_CHECK_DEPRECATED_ENV = "KUBESCAPE_SKIP_UPDATE_CHECK"
@@ -60,11 +62,15 @@ type VersionCheckHandler struct {
 	versionURL string
 }
 type VersionCheckRequest struct {
+	AccountID        string `json:"accountID"`        // account id
 	Client           string `json:"client"`           // kubescape
 	ClientBuild      string `json:"clientBuild"`      // client build environment
 	ClientVersion    string `json:"clientVersion"`    // kubescape version
+	ClusterID        string `json:"clusterID"`        // cluster id
 	Framework        string `json:"framework"`        // framework name
 	FrameworkVersion string `json:"frameworkVersion"` // framework version
+	HelmChartVersion string `json:"helmChartVersion"` // helm chart version
+	Nodes            int    `json:"nodes"`            // number of nodes
 	ScanningTarget   string `json:"target"`           // Deprecated
 	ScanningContext  string `json:"context"`          // scanning context- cluster/file/gitURL/localGit/dir
 	TriggeredBy      string `json:"triggeredBy"`      // triggered by - cli/ ci / microservice
@@ -101,13 +107,13 @@ func getTriggerSource() string {
 	return "cli"
 }
 
-func NewVersionCheckRequest(buildNumber, frameworkName, frameworkVersion, scanningTarget string) *VersionCheckRequest {
+func NewVersionCheckRequest(accountID, buildNumber, frameworkName, frameworkVersion, scanningContext string, k8sClient kubernetes.Interface) *VersionCheckRequest {
 	if buildNumber == "" {
 		buildNumber = UnknownBuildNumber
 	}
 
-	if scanningTarget == "" {
-		scanningTarget = "unknown"
+	if scanningContext == "" {
+		scanningContext = "unknown"
 	}
 
 	if Client == "" {
@@ -115,14 +121,45 @@ func NewVersionCheckRequest(buildNumber, frameworkName, frameworkVersion, scanni
 	}
 
 	return &VersionCheckRequest{
+		AccountID:        accountID,
 		Client:           "kubescape",
 		ClientBuild:      Client,
 		ClientVersion:    buildNumber,
+		ClusterID:        generateClusterID(k8sClient),
 		Framework:        frameworkName,
 		FrameworkVersion: frameworkVersion,
-		ScanningTarget:   scanningTarget,
+		HelmChartVersion: getHelmChartVersion(),
+		Nodes:            getNodeCount(k8sClient),
+		ScanningContext:  scanningContext,
 		TriggeredBy:      getTriggerSource(),
 	}
+}
+
+// copilot suggests to use the uid of a service to generate a cluster id
+func generateClusterID(k8sClient kubernetes.Interface) string {
+	if k8sClient == nil {
+		return ""
+	}
+	svc, err := k8sClient.CoreV1().Services("default").Get(context.TODO(), "kubernetes", metav1.GetOptions{})
+	if err != nil {
+		return ""
+	}
+	return string(svc.UID)
+}
+
+func getHelmChartVersion() string {
+	return os.Getenv("HELM_RELEASE")
+}
+
+func getNodeCount(k8sClient kubernetes.Interface) int {
+	if k8sClient == nil {
+		return 0
+	}
+	list, err := k8sClient.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return 0
+	}
+	return len(list.Items)
 }
 
 func (v *VersionCheckHandlerMock) CheckLatestVersion(_ context.Context, _ *VersionCheckRequest) error {
