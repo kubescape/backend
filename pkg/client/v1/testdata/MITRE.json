@@ -3,9 +3,15 @@
   "name": "MITRE",
   "creationTime": "",
   "description": "Testing MITRE for Kubernetes as suggested by microsoft in https://www.microsoft.com/security/blog/wp-content/uploads/2020/04/k8s-matrix.png",
-  "typeTags": ["compliance"],
+  "typeTags": [
+    "compliance"
+  ],
   "controls": [
     {
+      "rulesIDs": [
+        "",
+        ""
+      ],
       "guid": "",
       "name": "Access container service account",
       "attributes": {
@@ -99,7 +105,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines which service accounts can be used to access other resources in the cluster",
           "remediation": "",
@@ -172,7 +177,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines which service accounts can be used to access other resources in the cluster",
           "remediation": "",
@@ -180,13 +184,14 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        "",
-        ""
-      ],
       "baseScore": 6
     },
     {
+      "rulesIDs": [
+        "",
+        "",
+        ""
+      ],
       "guid": "",
       "name": "Access Kubernetes dashboard",
       "attributes": {
@@ -231,7 +236,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "fails if subject that is not dashboard service account is bound to dashboard role/clusterrole, or- if anyone that is not dashboard pod is associated with its service account.",
           "remediation": "",
@@ -267,7 +271,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "fails if subject that is not dashboard service account is bound to dashboard role/clusterrole, or- if anyone that is not dashboard pod is associated with its service account.",
           "remediation": "",
@@ -325,7 +328,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "fails if subject that is not dashboard service account is bound to dashboard role/clusterrole, or- if anyone that is not dashboard pod is associated with its service account.",
           "remediation": "",
@@ -333,14 +335,13 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        "",
-        "",
-        ""
-      ],
       "baseScore": 2
     },
     {
+      "rulesIDs": [
+        "",
+        ""
+      ],
       "guid": "",
       "name": "Applications credentials in configuration files",
       "attributes": {
@@ -424,10 +425,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": [
-            "settings.postureControlInputs.sensitiveKeyNames",
-            "settings.postureControlInputs.sensitiveValuesAllowed"
-          ],
           "controlConfigInputs": [
             {
               "path": "settings.postureControlInputs.sensitiveKeyNames",
@@ -469,11 +466,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": [
-            "settings.postureControlInputs.sensitiveValues",
-            "settings.postureControlInputs.sensitiveKeyNames",
-            "settings.postureControlInputs.sensitiveValuesAllowed"
-          ],
           "controlConfigInputs": [
             {
               "path": "settings.postureControlInputs.sensitiveValues",
@@ -497,13 +489,13 @@
           "relevantCloudProviders": null
         }
       ],
+      "baseScore": 8
+    },
+    {
       "rulesIDs": [
         "",
         ""
       ],
-      "baseScore": 8
-    },
-    {
       "guid": "",
       "name": "Cluster-admin binding",
       "attributes": {
@@ -563,7 +555,6 @@
               "packageName": "cautils"
             }
           ],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines which users have cluster admin permissions",
           "remediation": "",
@@ -599,7 +590,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines which users have cluster admin permissions",
           "remediation": "",
@@ -607,13 +597,12 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        "",
-        ""
-      ],
       "baseScore": 6
     },
     {
+      "rulesIDs": [
+        ""
+      ],
       "guid": "",
       "name": "Cluster internal networking",
       "attributes": {
@@ -675,7 +664,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "lists namespaces in which no network policies are defined",
           "remediation": "",
@@ -683,12 +671,13 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        ""
-      ],
       "baseScore": 4
     },
     {
+      "rulesIDs": [
+        "",
+        ""
+      ],
       "guid": "",
       "name": "Exec into container",
       "attributes": {
@@ -739,7 +728,6 @@
               "packageName": "cautils"
             }
           ],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines which users have permissions to exec into pods",
           "remediation": "",
@@ -775,7 +763,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines which users have permissions to exec into pods",
           "remediation": "",
@@ -783,13 +770,13 @@
           "relevantCloudProviders": null
         }
       ],
+      "baseScore": 5
+    },
+    {
       "rulesIDs": [
         "",
         ""
       ],
-      "baseScore": 5
-    },
-    {
       "guid": "",
       "name": "Exposed sensitive interfaces",
       "attributes": {
@@ -862,9 +849,6 @@
               "packageName": "kubernetes.api.client"
             }
           ],
-          "configInputs": [
-            "settings.postureControlInputs.servicesNames"
-          ],
           "controlConfigInputs": [
             {
               "path": "settings.postureControlInputs.servicesNames",
@@ -933,9 +917,6 @@
               "packageName": "kubernetes.api.client"
             }
           ],
-          "configInputs": [
-            "settings.postureControlInputs.sensitiveInterfaces"
-          ],
           "controlConfigInputs": [
             {
               "path": "settings.postureControlInputs.sensitiveInterfaces",
@@ -949,13 +930,12 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        "",
-        ""
-      ],
       "baseScore": 6
     },
     {
+      "rulesIDs": [
+        ""
+      ],
       "guid": "",
       "name": "HostPath mount",
       "attributes": {
@@ -1031,7 +1011,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines if any workload contains a hostPath volume",
           "remediation": "Try to refrain from using hostPath mounts",
@@ -1039,12 +1018,12 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        ""
-      ],
       "baseScore": 7
     },
     {
+      "rulesIDs": [
+        ""
+      ],
       "guid": "",
       "name": "Instance Metadata API",
       "attributes": {
@@ -1098,7 +1077,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "Checks if there is access from the nodes to cloud prividers instance metadata services",
           "remediation": "",
@@ -1106,12 +1084,12 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        ""
-      ],
       "baseScore": 7
     },
     {
+      "rulesIDs": [
+        ""
+      ],
       "guid": "",
       "name": "Kubernetes CronJob",
       "attributes": {
@@ -1152,7 +1130,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines if it's cronjob",
           "remediation": "",
@@ -1160,12 +1137,13 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        ""
-      ],
       "baseScore": 1
     },
     {
+      "rulesIDs": [
+        "",
+        ""
+      ],
       "guid": "",
       "name": "List Kubernetes secrets",
       "attributes": {
@@ -1224,7 +1202,6 @@
               "packageName": "cautils"
             }
           ],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines which users can list/get secrets",
           "remediation": "",
@@ -1260,7 +1237,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines which users can list/get secrets",
           "remediation": "",
@@ -1268,13 +1244,12 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        "",
-        ""
-      ],
       "baseScore": 7
     },
     {
+      "rulesIDs": [
+        ""
+      ],
       "guid": "",
       "name": "Mount service principal",
       "attributes": {
@@ -1338,7 +1313,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines if any workload contains a hostPath volume",
           "remediation": "Try to refrain from using hostPath mounts",
@@ -1350,12 +1324,12 @@
           ]
         }
       ],
-      "rulesIDs": [
-        ""
-      ],
       "baseScore": 4
     },
     {
+      "rulesIDs": [
+        ""
+      ],
       "guid": "",
       "name": "Privileged container",
       "attributes": {
@@ -1432,7 +1406,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines if pods/deployments defined as privileged true",
           "remediation": "avoid defining pods as privilleged",
@@ -1440,12 +1413,13 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        ""
-      ],
       "baseScore": 8
     },
     {
+      "rulesIDs": [
+        "",
+        ""
+      ],
       "guid": "",
       "name": "SSH server running inside container",
       "attributes": {
@@ -1514,7 +1488,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "denies pods with SSH ports opened(22/222)",
           "remediation": "",
@@ -1573,7 +1546,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "denies pods with SSH ports opened(22/222)",
           "remediation": "",
@@ -1581,13 +1553,12 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        "",
-        ""
-      ],
       "baseScore": 3
     },
     {
+      "rulesIDs": [
+        ""
+      ],
       "guid": "",
       "name": "Writable hostPath mount",
       "attributes": {
@@ -1674,7 +1645,6 @@
               "packageName": "kubernetes.api.client"
             }
           ],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines if any workload contains a hostPath volume with rw permissions",
           "remediation": "Set the readOnly field of the mount to true",
@@ -1682,12 +1652,12 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        ""
-      ],
       "baseScore": 8
     },
     {
+      "rulesIDs": [
+        ""
+      ],
       "guid": "",
       "name": "Malicious admission controller (mutating)",
       "attributes": {
@@ -1737,7 +1707,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "Returns mutating webhook configurations to be verified",
           "remediation": "Analyze webhook for malicious behavior",
@@ -1745,12 +1714,12 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        ""
-      ],
       "baseScore": 4
     },
     {
+      "rulesIDs": [
+        ""
+      ],
       "guid": "",
       "name": "Malicious admission controller (validating)",
       "attributes": {
@@ -1801,7 +1770,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "Returns validating webhook configurations to be verified",
           "remediation": "Analyze webhook for malicious behavior",
@@ -1809,12 +1777,13 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        ""
-      ],
       "baseScore": 3
     },
     {
+      "rulesIDs": [
+        "",
+        ""
+      ],
       "guid": "",
       "name": "Delete Kubernetes events",
       "attributes": {
@@ -1873,7 +1842,6 @@
               "packageName": "cautils"
             }
           ],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines which users can delete events",
           "remediation": "",
@@ -1909,7 +1877,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines which users can delete events",
           "remediation": "",
@@ -1917,13 +1884,13 @@
           "relevantCloudProviders": null
         }
       ],
+      "baseScore": 4
+    },
+    {
       "rulesIDs": [
         "",
         ""
       ],
-      "baseScore": 4
-    },
-    {
       "guid": "",
       "name": "CoreDNS poisoning",
       "attributes": {
@@ -1981,7 +1948,6 @@
               "packageName": "cautils"
             }
           ],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines which users can update/patch the 'coredns' configmap",
           "remediation": "",
@@ -2017,7 +1983,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "determines which users can update/patch the 'coredns' configmap",
           "remediation": "",
@@ -2025,13 +1990,13 @@
           "relevantCloudProviders": null
         }
       ],
+      "baseScore": 4
+    },
+    {
       "rulesIDs": [
         "",
         ""
       ],
-      "baseScore": 4
-    },
-    {
       "guid": "",
       "name": "Data Destruction",
       "attributes": {
@@ -2077,7 +2042,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "fails if user can delete important resources",
           "remediation": "",
@@ -2113,7 +2077,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "fails if user can delete important resources",
           "remediation": "",
@@ -2121,13 +2084,12 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        "",
-        ""
-      ],
       "baseScore": 5
     },
     {
+      "rulesIDs": [
+        ""
+      ],
       "guid": "",
       "name": "CVE-2021-25741 - Using symlink for arbitrary host file system access.",
       "attributes": {
@@ -2199,7 +2161,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "A user may be able to create a container with subPath volume mounts to access files \u0026 directories outside of the volume, including on the host filesystem. This was affected at the following versions: v1.22.0 - v1.22.1, v1.21.0 - v1.21.4, v1.20.0 - v1.20.10, version v1.19.14 and lower. ",
           "remediation": "To mitigate this vulnerability without upgrading kubelet, you can disable the VolumeSubpath feature gate on kubelet and kube-apiserver, and remove any existing Pods making use of the feature.",
@@ -2207,12 +2168,12 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        ""
-      ],
       "baseScore": 6
     },
     {
+      "rulesIDs": [
+        ""
+      ],
       "guid": "",
       "name": "CVE-2021-25742-nginx-ingress-snippet-annotation-vulnerability",
       "attributes": {
@@ -2258,7 +2219,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "",
           "remediation": "",
@@ -2266,12 +2226,13 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        ""
-      ],
       "baseScore": 8
     },
     {
+      "rulesIDs": [
+        "",
+        ""
+      ],
       "guid": "",
       "name": "Audit logs enabled",
       "attributes": {
@@ -2323,7 +2284,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "",
           "remediation": "",
@@ -2358,7 +2318,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "",
           "remediation": "",
@@ -2366,13 +2325,13 @@
           "relevantCloudProviders": null
         }
       ],
+      "baseScore": 5
+    },
+    {
       "rulesIDs": [
         "",
         ""
       ],
-      "baseScore": 5
-    },
-    {
       "guid": "",
       "name": "Secret/ETCD encryption enabled",
       "attributes": {
@@ -2424,7 +2383,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "",
           "remediation": "",
@@ -2459,7 +2417,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "",
           "remediation": "",
@@ -2467,13 +2424,13 @@
           "relevantCloudProviders": null
         }
       ],
+      "baseScore": 6
+    },
+    {
       "rulesIDs": [
         "",
         ""
       ],
-      "baseScore": 6
-    },
-    {
       "guid": "",
       "name": "PSP enabled",
       "attributes": {
@@ -2525,7 +2482,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "",
           "remediation": "",
@@ -2560,7 +2516,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "",
           "remediation": "",
@@ -2568,13 +2523,12 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        "",
-        ""
-      ],
       "baseScore": 1
     },
     {
+      "rulesIDs": [
+        ""
+      ],
       "guid": "",
       "name": "Disable anonymous access to Kubelet service",
       "attributes": {
@@ -2628,7 +2582,6 @@
             }
           ],
           "ruleDependencies": [],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "Determines if anonymous requests to the kubelet service are allowed.",
           "remediation": "Disable anonymous requests by setting  the anonymous-auth flag to false, or using the kubelet configuration file.",
@@ -2636,12 +2589,12 @@
           "relevantCloudProviders": null
         }
       ],
-      "rulesIDs": [
-        ""
-      ],
       "baseScore": 10
     },
     {
+      "rulesIDs": [
+        ""
+      ],
       "guid": "",
       "name": "Enforce Kubelet client TLS authentication",
       "attributes": {
@@ -2703,16 +2656,12 @@
               "packageName": "kubernetes.api.client"
             }
           ],
-          "configInputs": null,
           "controlConfigInputs": null,
           "description": "Determines if kubelet client tls authentication is enabled.",
           "remediation": "Start the kubelet with the --client-ca-file flag, providing a CA bundle to verify client certificates with.",
           "ruleQuery": "",
           "relevantCloudProviders": null
         }
-      ],
-      "rulesIDs": [
-        ""
       ],
       "baseScore": 9
     }
