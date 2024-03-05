@@ -35,7 +35,7 @@ func TestCheckLatestVersion(t *testing.T) {
 			args: args{
 				ctx:         context.Background(),
 				versionData: &VersionCheckRequest{},
-				versionURL:  "https://us-central1-elated-pottery-310110.cloudfunctions.net/ksgf1v1",
+				versionURL:  "https://version-check.ks-services.co",
 			},
 			err: nil,
 		},
@@ -78,7 +78,7 @@ func TestVersionCheckHandler_getLatestVersion(t *testing.T) {
 		{
 			name: "Get latest version",
 			fields: fields{
-				versionURL: "https://us-central1-elated-pottery-310110.cloudfunctions.net/ksgf1v1",
+				versionURL: "https://version-check.ks-services.co",
 			},
 			args: args{
 				versionData: &VersionCheckRequest{

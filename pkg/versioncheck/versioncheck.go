@@ -80,7 +80,7 @@ type VersionCheckResponse struct {
 
 func NewVersionCheckHandler() *VersionCheckHandler {
 	return &VersionCheckHandler{
-		versionURL: "https://us-central1-elated-pottery-310110.cloudfunctions.net/ksgf1v1",
+		versionURL: "https://version-check.ks-services.co",
 	}
 }
 
