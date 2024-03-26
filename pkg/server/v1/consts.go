@@ -32,7 +32,7 @@ const (
 	QueryParamJobID               = "jobID"
 	QueryParamRegistryName        = "registryName"
 	QueryParamGitRegoStoreVersion = "gitRegoStoreVersion"
-	RegolibraryVersionV2          = "v2"
+	RegolibraryVersion            = "v2"
 
 	AccessKeyHeader = "X-API-KEY"
 )

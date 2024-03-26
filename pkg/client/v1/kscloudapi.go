@@ -119,7 +119,7 @@ func (api *KSCloudAPI) getAttackTracksURL() string {
 		v1.ApiServerAttackTracksPath,
 		append(
 			api.paramsWithGUID(),
-			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersionV2,
+			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersion,
 		)...,
 	)
 }
@@ -151,7 +151,7 @@ func (api *KSCloudAPI) getFrameworkURL(frameworkName string) string {
 		append(
 			api.paramsWithGUID(),
 			v1.QueryParamFrameworkName, frameworkName,
-			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersionV2,
+			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersion,
 		)...,
 	)
 }
@@ -177,7 +177,7 @@ func (api *KSCloudAPI) getListFrameworkURL() string {
 		v1.ApiServerFrameworksPath,
 		append(
 			api.paramsWithGUID(),
-			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersionV2,
+			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersion,
 		)...,
 	)
 }
@@ -242,7 +242,7 @@ func (api *KSCloudAPI) getExceptionsURL(clusterName string) string {
 		v1.ApiServerExceptionsPath,
 		append(
 			api.paramsWithGUID(),
-			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersionV2,
+			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersion,
 		)...,
 	)
 	// queryParamClusterName, clusterName, // TODO - fix customer name support in Armo BE
@@ -289,7 +289,7 @@ func (api *KSCloudAPI) getAccountConfig(clusterName string) string {
 		v1.ApiServerCustomerConfigPath,
 		append(
 			params,
-			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersionV2,
+			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersion,
 		)...,
 	)
 }
@@ -308,7 +308,7 @@ func (api *KSCloudAPI) getAccountConfigDefault(clusterName string) string {
 		v1.ApiServerCustomerConfigPath,
 		append(
 			params,
-			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersionV2,
+			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersion,
 		)...,
 	)
 }
