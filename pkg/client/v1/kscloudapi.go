@@ -117,7 +117,10 @@ func (api *KSCloudAPI) GetAttackTracks() ([]AttackTrack, error) {
 func (api *KSCloudAPI) getAttackTracksURL() string {
 	return api.buildAPIURL(
 		v1.ApiServerAttackTracksPath,
-		api.paramsWithGUID()...,
+		append(
+			api.paramsWithGUID(),
+			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersion,
+		)...,
 	)
 }
 
@@ -148,6 +151,7 @@ func (api *KSCloudAPI) getFrameworkURL(frameworkName string) string {
 		append(
 			api.paramsWithGUID(),
 			v1.QueryParamFrameworkName, frameworkName,
+			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersion,
 		)...,
 	)
 }
@@ -171,7 +175,10 @@ func (api *KSCloudAPI) GetFrameworks() ([]Framework, error) {
 func (api *KSCloudAPI) getListFrameworkURL() string {
 	return api.buildAPIURL(
 		v1.ApiServerFrameworksPath,
-		api.paramsWithGUID()...,
+		append(
+			api.paramsWithGUID(),
+			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersion,
+		)...,
 	)
 }
 
@@ -233,7 +240,10 @@ func (api *KSCloudAPI) GetExceptions(clusterName string) ([]PostureExceptionPoli
 func (api *KSCloudAPI) getExceptionsURL(clusterName string) string {
 	return api.buildAPIURL(
 		v1.ApiServerExceptionsPath,
-		api.paramsWithGUID()...,
+		append(
+			api.paramsWithGUID(),
+			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersion,
+		)...,
 	)
 	// queryParamClusterName, clusterName, // TODO - fix customer name support in Armo BE
 }
@@ -277,7 +287,10 @@ func (api *KSCloudAPI) getAccountConfig(clusterName string) string {
 
 	return api.buildAPIURL(
 		v1.ApiServerCustomerConfigPath,
-		params...,
+		append(
+			params,
+			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersion,
+		)...,
 	)
 }
 
@@ -293,7 +306,10 @@ func (api *KSCloudAPI) getAccountConfigDefault(clusterName string) string {
 
 	return api.buildAPIURL(
 		v1.ApiServerCustomerConfigPath,
-		params...,
+		append(
+			params,
+			v1.QueryParamGitRegoStoreVersion, v1.RegolibraryVersion,
+		)...,
 	)
 }
 

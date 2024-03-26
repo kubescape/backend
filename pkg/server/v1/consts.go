@@ -22,15 +22,17 @@ const (
 	KubescapeFallbackCustomerGUID = "11111111-1111-1111-1111-111111111111"
 
 	// URL query parameters
-	QueryParamCustomerGUID  = "customerGUID"
-	QueryParamScope         = "scope"
-	QueryParamFrameworkName = "frameworkName"
-	QueryParamPolicyName    = "policyName"
-	QueryParamClusterName   = "clusterName"
-	QueryParamContextName   = "contextName"
-	QueryParamReport        = "reportGUID"
-	QueryParamJobID         = "jobID"
-	QueryParamRegistryName  = "registryName"
+	QueryParamCustomerGUID        = "customerGUID"
+	QueryParamScope               = "scope"
+	QueryParamFrameworkName       = "frameworkName"
+	QueryParamPolicyName          = "policyName"
+	QueryParamClusterName         = "clusterName"
+	QueryParamContextName         = "contextName"
+	QueryParamReport              = "reportGUID"
+	QueryParamJobID               = "jobID"
+	QueryParamRegistryName        = "registryName"
+	QueryParamGitRegoStoreVersion = "gitRegoStoreVersion"
+	RegolibraryVersion            = "v2"
 
 	AccessKeyHeader = "X-API-KEY"
 )
