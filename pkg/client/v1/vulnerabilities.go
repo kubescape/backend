@@ -3,18 +3,17 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-
 	"github.com/armosec/armoapi-go/armotypes"
 	"github.com/armosec/armoapi-go/identifiers"
 	httputils "github.com/armosec/utils-go/httputils"
 	v1 "github.com/kubescape/backend/pkg/server/v1"
 	"github.com/kubescape/backend/pkg/utils"
+	"io"
+	"net/http"
+	"net/url"
 )
 
-func getCVEExceptionsURL(backendURL, customerGUID string, designators *identifiers.PortalDesignator) (*url.URL, error) {
+func constructCVEExceptionsURL(backendURL, customerGUID string, queryParams *url.Values) (*url.URL, error) {
 	scheme, host, err := utils.ParseHost(backendURL)
 	if err != nil {
 		return nil, err
@@ -24,24 +23,25 @@ func getCVEExceptionsURL(backendURL, customerGUID string, designators *identifie
 		Scheme: scheme,
 		Path:   v1.ApiServerVulnerabilitiesExceptionsPathOld,
 	}
-	qValues := expURL.Query()
-	for k, v := range designators.Attributes {
-		qValues.Add(k, v)
-	}
-	qValues.Add(v1.QueryParamCustomerGUID, customerGUID)
-
-	expURL.RawQuery = qValues.Encode()
+	queryParams.Add(v1.QueryParamCustomerGUID, customerGUID)
+	expURL.RawQuery = queryParams.Encode()
 	return expURL, nil
 }
 
-func getCVEExceptionByDEsignator(backendURL, customerGUID string, designators *identifiers.PortalDesignator, headers map[string]string) ([]armotypes.VulnerabilityExceptionPolicy, error) {
-
-	var vulnerabilityExceptionPolicy []armotypes.VulnerabilityExceptionPolicy
-
-	url, err := getCVEExceptionsURL(backendURL, customerGUID, designators)
-	if err != nil {
-		return nil, err
+func getCVEExceptionsURL(backendURL, customerGUID string, designators *identifiers.PortalDesignator) (*url.URL, error) {
+	qValues := url.Values{}
+	for k, v := range designators.Attributes {
+		qValues.Add(k, v)
 	}
+	return constructCVEExceptionsURL(backendURL, customerGUID, &qValues)
+}
+
+func getCVEExceptionsURLByRawQuery(backendURL, customerGUID string, rawQuery *url.Values) (*url.URL, error) {
+	return constructCVEExceptionsURL(backendURL, customerGUID, rawQuery)
+}
+
+func fetchCVEExceptions(url *url.URL, headers map[string]string) ([]armotypes.VulnerabilityExceptionPolicy, error) {
+	var vulnerabilityExceptionPolicy []armotypes.VulnerabilityExceptionPolicy
 
 	resp, err := httputils.HttpGet(http.DefaultClient, url.String(), headers)
 	if err != nil {
@@ -49,7 +49,7 @@ func getCVEExceptionByDEsignator(backendURL, customerGUID string, designators *i
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("getCVEExceptionByDEsignator: resp.StatusCode %d", resp.StatusCode)
+		return nil, fmt.Errorf("fetchCVEExceptions: resp.StatusCode %d", resp.StatusCode)
 	}
 
 	bodyBytes, err := io.ReadAll(resp.Body)
@@ -65,12 +65,20 @@ func getCVEExceptionByDEsignator(backendURL, customerGUID string, designators *i
 	return vulnerabilityExceptionPolicy, nil
 }
 
-func GetCVEExceptionByDesignator(baseURL, customerGUID string, designators *identifiers.PortalDesignator, headers map[string]string) ([]armotypes.VulnerabilityExceptionPolicy, error) {
-	vulnerabilityExceptionPolicyList, err := getCVEExceptionByDEsignator(baseURL, customerGUID, designators, headers)
+func GetCVEExceptionByDesignator(backendURL, customerGUID string, designators *identifiers.PortalDesignator, headers map[string]string) ([]armotypes.VulnerabilityExceptionPolicy, error) {
+	url, err := getCVEExceptionsURL(backendURL, customerGUID, designators)
 	if err != nil {
 		return nil, err
 	}
-	return vulnerabilityExceptionPolicyList, nil
+	return fetchCVEExceptions(url, headers)
+}
+
+func GetCVEExceptionByRawQuery(backendURL, customerGUID string, rawQuery *url.Values, headers map[string]string) ([]armotypes.VulnerabilityExceptionPolicy, error) {
+	url, err := getCVEExceptionsURLByRawQuery(backendURL, customerGUID, rawQuery)
+	if err != nil {
+		return nil, err
+	}
+	return fetchCVEExceptions(url, headers)
 }
 
 func GetVulnerabilitiesReportURL(eventReceiverUrl, customerGUID string) (*url.URL, error) {
