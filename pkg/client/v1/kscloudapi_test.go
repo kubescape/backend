@@ -402,3 +402,39 @@ func withAPIGarbled(enabled bool) mockAPIOption {
 		o.withGarbled = enabled
 	}
 }
+
+func TestGetExceptionsURL(t *testing.T) {
+	ks, err := NewKSCloudAPI("https://api.kubescape.com", "https://api.google.com/report", "00000000-0000-0000-0000-000000000000", "00000000-0000-0000-0000-000000000000")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name        string
+		clusterName string
+		expectedURL string
+	}{
+		{
+			name:        "should return correct URL with given cluster name",
+			clusterName: "testCluster",
+			expectedURL: "https://api.kubescape.com/api/v1/controlExceptions?customerGUID=00000000-0000-0000-0000-000000000000&gitRegoStoreVersion=v2",
+		},
+		{
+			name:        "should return correct URL with different cluster name",
+			clusterName: "anotherTestCluster",
+			expectedURL: "https://api.kubescape.com/api/v1/controlExceptions?customerGUID=00000000-0000-0000-0000-000000000000&gitRegoStoreVersion=v2",
+		},
+		{
+			name:        "should return correct URL when cluster name is empty",
+			clusterName: "",
+			expectedURL: "https://api.kubescape.com/api/v1/controlExceptions?customerGUID=00000000-0000-0000-0000-000000000000&gitRegoStoreVersion=v2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resultURL := ks.getExceptionsURL(tt.clusterName)
+			require.Equal(t, tt.expectedURL, resultURL)
+		})
+	}
+}
