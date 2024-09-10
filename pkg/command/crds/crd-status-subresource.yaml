@@ -1,0 +1,57 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: operatorcommands.kubescape.io
+spec:
+  group: kubescape.io
+  names:
+    kind: OperatorCommand
+    plural: operatorcommands
+    singular: operatorcommand
+    shortNames:
+      - opcmd
+  scope: Cluster
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                guid:
+                  type: string
+                commandType:
+                  type: string
+                designators:
+                  type: string # fixme
+                args:
+                  type: object
+                  additionalProperties: true
+            status:
+              started:
+                type: boolean
+              startedAt:
+                allOf:
+                  - $ref: '#/components/schemas/io.k8s.apimachinery.pkg.apis.meta.v1.Time'
+              completed:
+                type: boolean
+              completedAt:
+                allOf:
+                  - $ref: '#/components/schemas/io.k8s.apimachinery.pkg.apis.meta.v1.Time'
+              error:
+                type: object
+                properties:
+                  reason:
+                    type: string
+                  message:
+                    type: string
+                  errorCode:
+                    type: integer
+      # subresources for the custom resource
+      subresources:
+        # enables the status subresource
+        status: {}
