@@ -28,7 +28,8 @@ spec:
                 commandType:
                   type: string
                 designators:
-                  type: string # fixme
+                  type: array
+                  items:
                 args:
                   type: object
                   additionalProperties: true

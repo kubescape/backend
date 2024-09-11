@@ -5,9 +5,9 @@ metadata:
 spec:
   group: kubescape.io
   names:
-    kind: OperatorCommand
     plural: operatorcommands
     singular: operatorcommand
+    kind: OperatorCommand
     shortNames:
       - opcmd
   scope: Cluster
@@ -22,36 +22,41 @@ spec:
             spec:
               type: object
               properties:
-                guid:
-                  type: string
-                commandType:
-                  type: string
-                designators:
-                  type: string # fixme
                 args:
                   type: object
                   additionalProperties: true
+                commandType:
+                  type: string
+                designators:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true 
+                guid:
+                  type: string
             status:
-              started:
-                type: boolean
-              startedAt:
-                allOf:
-                  - $ref: '#/components/schemas/io.k8s.apimachinery.pkg.apis.meta.v1.Time'
-              completed:
-                type: boolean
-              completedAt:
-                allOf:
-                  - $ref: '#/components/schemas/io.k8s.apimachinery.pkg.apis.meta.v1.Time'
-              error:
-                type: object
-                properties:
-                  reason:
-                    type: string
-                  message:
-                    type: string
-                  errorCode:
-                    type: integer
-      # subresources for the custom resource
+              type: object
+              properties:
+                completed:
+                  type: boolean
+                completedAt:
+                  type: string
+                  format: date-time
+                error:
+                  type: object
+                  properties:
+                    errorCode:
+                      type: integer
+                    message:
+                      type: string
+                    reason:
+                      type: string
+                started:
+                  type: boolean
+                startedAt:
+                  type: string
+                  format: date-time
       subresources:
-        # enables the status subresource
         status: {}
+  conversion:
+    strategy: None
