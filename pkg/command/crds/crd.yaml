@@ -5,9 +5,9 @@ metadata:
 spec:
   group: kubescape.io
   names:
-    kind: OperatorCommand
     plural: operatorcommands
     singular: operatorcommand
+    kind: OperatorCommand
     shortNames:
       - opcmd
   scope: Cluster
@@ -16,7 +16,6 @@ spec:
       served: true
       storage: true
       schema:
-        # schema used for validation
         openAPIV3Schema:
           type: object
           properties:
@@ -27,29 +26,62 @@ spec:
                   type: string
                 commandType:
                   type: string
+                commandVersion:
+                  type: string
+                  nullable: true
                 designators:
                   type: array
                   items:
+                    type: object
+                    additionalProperties: true
+                body:
+                  type: string
+                  format: byte
+                  nullable: true
+                ttl:
+                  type: string
+                  format: duration
+                  nullable: true
                 args:
                   type: object
                   additionalProperties: true
+                  nullable: true
+                commandIndex:
+                  type: integer
+                  nullable: true
+                commandCount:
+                  type: integer
+                  nullable: true
             status:
-              started:
-                type: boolean
-              startedAt:
-                allOf:
-                  - $ref: '#/components/schemas/io.k8s.apimachinery.pkg.apis.meta.v1.Time'
-              completed:
-                type: boolean
-              completedAt:
-                allOf:
-                  - $ref: '#/components/schemas/io.k8s.apimachinery.pkg.apis.meta.v1.Time'
-              error:
-                type: object
-                properties:
-                  reason:
-                    type: string
-                  message:
-                    type: string
-                  errorCode:
-                    type: integer
+              type: object
+              properties:
+                started:
+                  type: boolean
+                startedAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+                completed:
+                  type: boolean
+                completedAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+                executer:
+                  type: string
+                  nullable: true
+                error:
+                  type: object
+                  nullable: true
+                  properties:
+                    reason:
+                      type: string
+                      nullable: true
+                    message:
+                      type: string
+                      nullable: true
+                    errorCode:
+                      type: integer
+                      nullable: true
+      subresources:
+        status: {}

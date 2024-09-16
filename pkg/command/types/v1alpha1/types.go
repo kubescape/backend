@@ -23,16 +23,15 @@ type OperatorCommand struct {
 }
 
 type OperatorCommandSpec struct {
-	GUID           string `json:"guid"`                     // GUID is a unique identifier for the command
-	CommandType    string `json:"commandType"`              // CommandType is the type of the command
-	CommandVersion string `json:"commandVersion,omitempty"` // CommandVersion is the version of the command
-	Labels         map[string]string              `json:"labels,omitempty"`       // Labels are the labels for the command
-	Designators    []identifiers.PortalDesignator `json:"designators,omitempty"` // Designators are the designators for the command
-	Body           []byte                         `json:"body,omitempty"`        // Body is the body of the command
-	TTL            time.Duration                  `json:"ttl,omitempty"`         // TTL is the time to live for the command
-	Args           map[string]interface{}         `json:"args,omitempty"`        // Args are the arguments for the command
-	CommandIndex   *int                           `json:"commandIndex,omitempty"` // CommandIndex is the index of the command in the sequence
-	CommandCount   *int                           `json:"commandCount,omitempty"` // CommandCount is the total number of commands in the sequence
+	GUID           string                         `json:"guid"`                     // GUID is a unique identifier for the command
+	CommandType    string                         `json:"commandType"`              // CommandType is the type of the command
+	CommandVersion string                         `json:"commandVersion,omitempty"` // CommandVersion is the version of the command
+	Designators    []identifiers.PortalDesignator `json:"designators,omitempty"`    // Designators are the designators for the command
+	Body           []byte                         `json:"body,omitempty"`           // Body is the body of the command
+	TTL            time.Duration                  `json:"ttl,omitempty"`            // TTL is the time to live for the command
+	Args           map[string]interface{}         `json:"args,omitempty"`           // Args are the arguments for the command
+	CommandIndex   *int                           `json:"commandIndex,omitempty"`   // CommandIndex is the index of the command in the sequence
+	CommandCount   *int                           `json:"commandCount,omitempty"`   // CommandCount is the total number of commands in the sequence
 }
 
 type OperatorCommandStatus struct {
