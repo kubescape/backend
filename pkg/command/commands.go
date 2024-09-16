@@ -3,7 +3,8 @@ package command
 type OperatorCommandType string
 
 const (
-	OperatorCommandNodeNameLabelKey string = "nodeName" // holds the node name label, on which to run the command (optional)
+	OperatorCommandAppNameLabelKey  string = "kubescape.io/app-name"  // holds the app name label, on which to run the command (optional)
+	OperatorCommandNodeNameLabelKey string = "kubescape.io/node-name" // holds the node name label, on which to run the command (optional)
 
 	// command types will be defined here
 	OperatorCommandTypeResponse OperatorCommandType = "response"
