@@ -13,9 +13,10 @@ const (
 type ResponseAction string
 
 const (
-	ResponseActionKill  ResponseAction = "Kill"
-	ResponseActionStop  ResponseAction = "Stop"
-	ResponseActionPause ResponseAction = "Pause"
+	ResponseActionKill    ResponseAction = "Kill"
+	ResponseActionStop    ResponseAction = "Stop"
+	ResponseActionPause   ResponseAction = "Pause"
+	ResponseActionUnpause ResponseAction = "Unpause"
 )
 
 type ResponseCommand struct {
