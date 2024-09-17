@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	OperatorCommandVersion string = "v1"
+	OperatorCommandVersion string = "v1alpha1"
 )
 
 var SchemaGroupVersionResource = schema.GroupVersionResource{
