@@ -87,7 +87,7 @@ func TestVersionCheckHandler_getLatestVersion(t *testing.T) {
 			},
 			want: &VersionCheckResponse{
 				Client:       "kubescape",
-				ClientUpdate: "v3.0.9",
+				ClientUpdate: "v3.0.15",
 			},
 			wantErr: false,
 		},
