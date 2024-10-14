@@ -8,6 +8,9 @@ const (
 
 	// command types will be defined here
 	OperatorCommandTypeRuntimeResponse OperatorCommandType = "RuntimeResponse"
+	OperatorCommandTypeCreateRegistry  OperatorCommandType = "CreateRegistry"
+	OperatorCommandTypeUpdateRegistry  OperatorCommandType = "UpdateRegistry"
+	OperatorCommandTypeDeleteRegistry  OperatorCommandType = "DeleteRegistry"
 )
 
 // ResponseCommand
