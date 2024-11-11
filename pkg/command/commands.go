@@ -12,6 +12,7 @@ const (
 	OperatorCommandTypeCreateRegistry OperatorCommandType = "CreateRegistry"
 	OperatorCommandTypeUpdateRegistry OperatorCommandType = "UpdateRegistry"
 	OperatorCommandTypeDeleteRegistry OperatorCommandType = "DeleteRegistry"
+	OperatorCommandTypeCheckRegistry  OperatorCommandType = "CheckRegistry"
 )
 
 // ResponseCommand
