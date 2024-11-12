@@ -41,6 +41,7 @@ type OperatorCommandStatus struct {
 	CompletedAt *metav1.Time                `json:"completedAt,omitempty"` // CompletedAt is the time at which the command was completed
 	Executer    string                      `json:"executer,omitempty"`    // Executer is the entity that executed the command
 	Error       *OperatorCommandStatusError `json:"error,omitempty"`       // Error is the error that occurred during the execution of the command (if any)
+	Payload     []byte                      `json:"payload,omitempty"`     // Payload is the response payload from execution of the command (if any)
 }
 
 type OperatorCommandStatusError struct {
