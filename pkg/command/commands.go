@@ -9,10 +9,11 @@ const (
 	// command types will be defined here
 	OperatorCommandTypeRuntimeResponse OperatorCommandType = "RuntimeResponse"
 
-	OperatorCommandTypeCreateRegistry OperatorCommandType = "CreateRegistry"
-	OperatorCommandTypeUpdateRegistry OperatorCommandType = "UpdateRegistry"
-	OperatorCommandTypeDeleteRegistry OperatorCommandType = "DeleteRegistry"
-	OperatorCommandTypeCheckRegistry  OperatorCommandType = "CheckRegistry"
+	OperatorCommandTypeCreateRegistry    OperatorCommandType = "CreateRegistry"
+	OperatorCommandTypeUpdateRegistry    OperatorCommandType = "UpdateRegistry"
+	OperatorCommandTypeDeleteRegistry    OperatorCommandType = "DeleteRegistry"
+	OperatorCommandTypeCheckRegistry     OperatorCommandType = "CheckRegistry"
+	OperatorCommandTypeSetRegistryStatus OperatorCommandType = "SetRegistryStatus"
 )
 
 // ResponseCommand
