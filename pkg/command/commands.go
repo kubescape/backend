@@ -13,6 +13,8 @@ const (
 	OperatorCommandTypeUpdateRegistry OperatorCommandType = "UpdateRegistry"
 	OperatorCommandTypeDeleteRegistry OperatorCommandType = "DeleteRegistry"
 	OperatorCommandTypeCheckRegistry  OperatorCommandType = "CheckRegistry"
+
+	OperatorCommandTypeOperatorAPI OperatorCommandType = "OperatorAPI"
 )
 
 // ResponseCommand
