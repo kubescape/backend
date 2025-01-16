@@ -8,6 +8,7 @@ import (
 	"github.com/kubescape/backend/pkg/servicediscovery/schema"
 	v1 "github.com/kubescape/backend/pkg/servicediscovery/v1"
 	v2 "github.com/kubescape/backend/pkg/servicediscovery/v2"
+	v3 "github.com/kubescape/backend/pkg/servicediscovery/v3"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,6 +19,10 @@ var _ schema.IServiceDiscoveryClient = &v1.ServiceDiscoveryClientV1{}
 // v2
 var _ schema.IServiceDiscoveryServer = &v2.ServiceDiscoveryServerV2{}
 var _ schema.IServiceDiscoveryClient = &v2.ServiceDiscoveryClientV2{}
+
+// v3
+var _ schema.IServiceDiscoveryServer = &v3.ServiceDiscoveryServerV3{}
+var _ schema.IServiceDiscoveryClient = &v3.ServiceDiscoveryClientV3{}
 
 var testUrl string
 var testVersion string
@@ -149,4 +154,73 @@ func TestServiceDiscoveryStreamV2(t *testing.T) {
 	assert.NotEmpty(t, services.GetReportReceiverHttpUrl())
 	assert.NotEmpty(t, services.GetReportReceiverWebsocketUrl())
 	assert.NotEmpty(t, services.GetSynchronizerUrl())
+}
+
+func TestServiceDiscoveryClientV3(t *testing.T) {
+	flag.Parse()
+	if testUrl == "" {
+		t.Skip("skipping test because no URL was provided")
+	}
+	if testVersion != "v3" {
+		t.Skip()
+	}
+
+	client, err := v3.NewServiceDiscoveryClientV3(testUrl)
+	if err != nil {
+		t.Fatalf("failed to create client: %s", err.Error())
+	}
+	sdUrl := client.GetServiceDiscoveryUrl()
+	t.Logf("testing URL: %s", sdUrl)
+	services, err := GetServices(client)
+	if err != nil {
+		assert.FailNowf(t, fmt.Sprintf("failed to get services from url: %s (HTTP GET)", sdUrl), err.Error())
+	}
+
+	assert.NotNil(t, services)
+	assert.NotEmpty(t, services.GetApiServerUrl())
+	assert.NotEmpty(t, services.GetMetricsUrl())
+	assert.NotEmpty(t, services.GetReportReceiverHttpUrl())
+	assert.NotEmpty(t, services.GetSynchronizerUrl())
+
+	// deprecated services
+	assert.Panics(t, func() { services.GetReportReceiverWebsocketUrl() })
+	assert.Panics(t, func() { services.GetGatewayUrl() })
+}
+
+func TestServiceDiscoveryFileV3(t *testing.T) {
+	file := v3.NewServiceDiscoveryFileV3("testdata/v3.json")
+	services, err := GetServices(file)
+	if err != nil {
+		assert.FailNowf(t, "failed to get services from file: %s", err.Error())
+	}
+
+	assert.NotNil(t, services)
+	assert.NotEmpty(t, services.GetApiServerUrl())
+	assert.NotEmpty(t, services.GetMetricsUrl())
+	assert.NotEmpty(t, services.GetReportReceiverHttpUrl())
+	assert.NotEmpty(t, services.GetSynchronizerUrl())
+
+	// deprecated services
+	assert.Panics(t, func() { services.GetReportReceiverWebsocketUrl() })
+	assert.Panics(t, func() { services.GetGatewayUrl() })
+}
+
+func TestServiceDiscoveryStreamV3(t *testing.T) {
+	stream := []byte("{\"version\": \"v3\",\"response\": {\"event-receiver-http\": \"https://er-test.com\",\"api-server\": \"https://api.test.com\",\"metrics\": \"https://metrics.test.com\", \"synchronizer\": \"wss://synchronizer.test.com\"}}")
+	services, err := GetServices(
+		v3.NewServiceDiscoveryStreamV3(stream),
+	)
+	if err != nil {
+		assert.FailNowf(t, "failed to get services from stream: %s", err.Error())
+	}
+
+	assert.NotNil(t, services)
+	assert.NotEmpty(t, services.GetApiServerUrl())
+	assert.NotEmpty(t, services.GetMetricsUrl())
+	assert.NotEmpty(t, services.GetReportReceiverHttpUrl())
+	assert.NotEmpty(t, services.GetSynchronizerUrl())
+
+	// deprecated services
+	assert.Panics(t, func() { services.GetReportReceiverWebsocketUrl() })
+	assert.Panics(t, func() { services.GetGatewayUrl() })
 }

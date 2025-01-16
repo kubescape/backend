@@ -7,13 +7,17 @@ import (
 
 type IBackendServices interface {
 	SetReportReceiverHttpUrl(string)
+	// deprecated
 	SetReportReceiverWebsocketUrl(string)
+	// deprecated
 	SetGatewayUrl(string)
 	SetApiServerUrl(string)
 	SetMetricsUrl(string)
 	SetSynchronizerUrl(string)
 	GetReportReceiverHttpUrl() string
+	// deprecated
 	GetReportReceiverWebsocketUrl() string
+	// deprecated
 	GetGatewayUrl() string
 	GetApiServerUrl() string
 	GetMetricsUrl() string
