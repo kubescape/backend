@@ -42,6 +42,7 @@ type OperatorCommandStatus struct {
 	Executer    string                      `json:"executer,omitempty"`    // Executer is the entity that executed the command
 	Error       *OperatorCommandStatusError `json:"error,omitempty"`       // Error is the error that occurred during the execution of the command (if any)
 	Payload     []byte                      `json:"payload,omitempty"`     // Payload is the response payload from execution of the command (if any)
+	PayloadStr  string                      `json:"payloadStr,omitempty"`  // PayloadStr is the response string payload from execution of the command (if any)
 }
 
 type OperatorCommandStatusError struct {
