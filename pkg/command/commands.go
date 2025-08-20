@@ -7,7 +7,8 @@ const (
 	OperatorCommandNodeNameLabelKey string = "kubescape.io/node-name" // holds the node name label, app running on this node name should execute the command (optional)
 
 	// command types will be defined here
-	OperatorCommandTypeRuntimeResponse OperatorCommandType = "RuntimeResponse"
+	OperatorCommandTypeRuntimeResponse    OperatorCommandType = "RuntimeResponse"
+	OperatorCommandTypeRuntimeUpdateRules OperatorCommandType = "RuntimeUpdateRules"
 
 	OperatorCommandTypeCreateRegistry OperatorCommandType = "CreateRegistry"
 	OperatorCommandTypeUpdateRegistry OperatorCommandType = "UpdateRegistry"
