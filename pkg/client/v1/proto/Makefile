@@ -31,4 +31,3 @@ help:
 	@echo "  git add *.pb.go *_grpc.pb.go"
 	@echo "  git commit -m 'Generate proto code for storage service'"
 	@echo ""
-	@echo "You can delete the vendor directory after generation (it's not needed for the build)"
