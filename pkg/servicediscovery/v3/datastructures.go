@@ -17,12 +17,11 @@ type ServiceDiscoveryServerV3 struct {
 type ServicesV3 struct {
 	schema.IBackendServices `json:"-"`
 
-	EventReceiverHttpUrl      string `json:"event-receiver-http"`
-	EventReceiverWebsocketUrl string `json:"event-receiver-ws"`
-	ApiServerUrl              string `json:"api-server"`
-	MetricsUrl                string `json:"metrics"`
-	SynchronizerUrl           string `json:"synchronizer"`
-	GrpcServerUrl             string `json:"grpc-server"`
+	EventReceiverHttpUrl string `json:"event-receiver-http"`
+	ApiServerUrl         string `json:"api-server"`
+	MetricsUrl           string `json:"metrics"`
+	SynchronizerUrl      string `json:"synchronizer"`
+	GrpcServerUrl        string `json:"grpc-server"`
 }
 
 type ServiceDiscoveryFileV3 struct {
