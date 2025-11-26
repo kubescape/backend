@@ -7,3 +7,11 @@ In order to test your service discovery backend endpoint run:
 ```bash
 go test ./... -url domain.example -version v1
 ```
+
+```bash
+go test ./... -url domain.example -version v2
+```
+
+```bash
+go test ./... -url domain.example -version v3
+```
