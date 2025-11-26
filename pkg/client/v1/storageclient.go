@@ -319,6 +319,94 @@ func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, n
 	return resp.NetworkNeighborhood, nil
 }
 
+// ListApplicationProfiles lists all ApplicationProfiles in a namespace (returns metadata only, nil Spec)
+func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace, cluster string) (*v1beta1.ApplicationProfileList, error) {
+	if c.protoClient == nil {
+		return nil, fmt.Errorf("client is not connected")
+	}
+
+	req := &proto.ListApplicationProfilesRequest{
+		Namespace:    namespace,
+		CustomerGuid: c.accountID,
+		Cluster:      cluster,
+	}
+
+	ctx = c.withMetadata(ctx)
+
+	if c.callTimeout != nil && *c.callTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, *c.callTimeout)
+		defer cancel()
+	}
+
+	resp, err := c.protoClient.ListApplicationProfiles(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if !resp.Success {
+		return nil, fmt.Errorf("failed to list application profiles: %s (code: %v)", resp.ErrorMessage, resp.ErrorCode)
+	}
+
+	// Convert pointer slice to value slice for ApplicationProfileList
+	items := make([]v1beta1.ApplicationProfile, len(resp.ApplicationProfiles))
+	for i, p := range resp.ApplicationProfiles {
+		if p != nil {
+			items[i] = *p
+		}
+	}
+
+	list := &v1beta1.ApplicationProfileList{
+		Items: items,
+	}
+
+	return list, nil
+}
+
+// ListNetworkNeighborhoods lists all NetworkNeighborhoods in a namespace (returns metadata only, nil Spec)
+func (c *StorageClient) ListNetworkNeighborhoods(ctx context.Context, namespace, cluster string) (*v1beta1.NetworkNeighborhoodList, error) {
+	if c.protoClient == nil {
+		return nil, fmt.Errorf("client is not connected")
+	}
+
+	req := &proto.ListNetworkNeighborhoodsRequest{
+		Namespace:    namespace,
+		CustomerGuid: c.accountID,
+		Cluster:      cluster,
+	}
+
+	ctx = c.withMetadata(ctx)
+
+	if c.callTimeout != nil && *c.callTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, *c.callTimeout)
+		defer cancel()
+	}
+
+	resp, err := c.protoClient.ListNetworkNeighborhoods(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if !resp.Success {
+		return nil, fmt.Errorf("failed to list network neighborhoods: %s (code: %v)", resp.ErrorMessage, resp.ErrorCode)
+	}
+
+	// Convert pointer slice to value slice for NetworkNeighborhoodList
+	items := make([]v1beta1.NetworkNeighborhood, len(resp.NetworkNeighborhoods))
+	for i, p := range resp.NetworkNeighborhoods {
+		if p != nil {
+			items[i] = *p
+		}
+	}
+
+	list := &v1beta1.NetworkNeighborhoodList{
+		Items: items,
+	}
+
+	return list, nil
+}
+
 // GetProtoClient returns the underlying proto client (for advanced usage)
 func (c *StorageClient) GetProtoClient() proto.StorageServiceClient {
 	return c.protoClient

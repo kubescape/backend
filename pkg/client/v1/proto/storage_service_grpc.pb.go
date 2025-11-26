@@ -19,8 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	StorageService_SendContainerProfile_FullMethodName = "/storageserver.v1.StorageService/SendContainerProfile"
-	StorageService_GetProfile_FullMethodName           = "/storageserver.v1.StorageService/GetProfile"
+	StorageService_SendContainerProfile_FullMethodName     = "/storageserver.v1.StorageService/SendContainerProfile"
+	StorageService_GetProfile_FullMethodName               = "/storageserver.v1.StorageService/GetProfile"
+	StorageService_ListApplicationProfiles_FullMethodName  = "/storageserver.v1.StorageService/ListApplicationProfiles"
+	StorageService_ListNetworkNeighborhoods_FullMethodName = "/storageserver.v1.StorageService/ListNetworkNeighborhoods"
 )
 
 // StorageServiceClient is the client API for StorageService service.
@@ -35,6 +37,10 @@ type StorageServiceClient interface {
 	// GetProfile retrieves an aggregated profile (ApplicationProfile or NetworkNeighborhood)
 	// by fetching container profiles from S3 and aggregating them
 	GetProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*GetProfileResponse, error)
+	// ListApplicationProfiles lists all ApplicationProfiles in a namespace (returns metadata only, nil Spec)
+	ListApplicationProfiles(ctx context.Context, in *ListApplicationProfilesRequest, opts ...grpc.CallOption) (*ListApplicationProfilesResponse, error)
+	// ListNetworkNeighborhoods lists all NetworkNeighborhoods in a namespace (returns metadata only, nil Spec)
+	ListNetworkNeighborhoods(ctx context.Context, in *ListNetworkNeighborhoodsRequest, opts ...grpc.CallOption) (*ListNetworkNeighborhoodsResponse, error)
 }
 
 type storageServiceClient struct {
@@ -65,6 +71,26 @@ func (c *storageServiceClient) GetProfile(ctx context.Context, in *GetProfileReq
 	return out, nil
 }
 
+func (c *storageServiceClient) ListApplicationProfiles(ctx context.Context, in *ListApplicationProfilesRequest, opts ...grpc.CallOption) (*ListApplicationProfilesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListApplicationProfilesResponse)
+	err := c.cc.Invoke(ctx, StorageService_ListApplicationProfiles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *storageServiceClient) ListNetworkNeighborhoods(ctx context.Context, in *ListNetworkNeighborhoodsRequest, opts ...grpc.CallOption) (*ListNetworkNeighborhoodsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListNetworkNeighborhoodsResponse)
+	err := c.cc.Invoke(ctx, StorageService_ListNetworkNeighborhoods_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // StorageServiceServer is the server API for StorageService service.
 // All implementations must embed UnimplementedStorageServiceServer
 // for forward compatibility.
@@ -77,6 +103,10 @@ type StorageServiceServer interface {
 	// GetProfile retrieves an aggregated profile (ApplicationProfile or NetworkNeighborhood)
 	// by fetching container profiles from S3 and aggregating them
 	GetProfile(context.Context, *GetProfileRequest) (*GetProfileResponse, error)
+	// ListApplicationProfiles lists all ApplicationProfiles in a namespace (returns metadata only, nil Spec)
+	ListApplicationProfiles(context.Context, *ListApplicationProfilesRequest) (*ListApplicationProfilesResponse, error)
+	// ListNetworkNeighborhoods lists all NetworkNeighborhoods in a namespace (returns metadata only, nil Spec)
+	ListNetworkNeighborhoods(context.Context, *ListNetworkNeighborhoodsRequest) (*ListNetworkNeighborhoodsResponse, error)
 	mustEmbedUnimplementedStorageServiceServer()
 }
 
@@ -92,6 +122,12 @@ func (UnimplementedStorageServiceServer) SendContainerProfile(context.Context, *
 }
 func (UnimplementedStorageServiceServer) GetProfile(context.Context, *GetProfileRequest) (*GetProfileResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetProfile not implemented")
+}
+func (UnimplementedStorageServiceServer) ListApplicationProfiles(context.Context, *ListApplicationProfilesRequest) (*ListApplicationProfilesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListApplicationProfiles not implemented")
+}
+func (UnimplementedStorageServiceServer) ListNetworkNeighborhoods(context.Context, *ListNetworkNeighborhoodsRequest) (*ListNetworkNeighborhoodsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListNetworkNeighborhoods not implemented")
 }
 func (UnimplementedStorageServiceServer) mustEmbedUnimplementedStorageServiceServer() {}
 func (UnimplementedStorageServiceServer) testEmbeddedByValue()                        {}
@@ -150,6 +186,42 @@ func _StorageService_GetProfile_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _StorageService_ListApplicationProfiles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListApplicationProfilesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StorageServiceServer).ListApplicationProfiles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StorageService_ListApplicationProfiles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StorageServiceServer).ListApplicationProfiles(ctx, req.(*ListApplicationProfilesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StorageService_ListNetworkNeighborhoods_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListNetworkNeighborhoodsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StorageServiceServer).ListNetworkNeighborhoods(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StorageService_ListNetworkNeighborhoods_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StorageServiceServer).ListNetworkNeighborhoods(ctx, req.(*ListNetworkNeighborhoodsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // StorageService_ServiceDesc is the grpc.ServiceDesc for StorageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -164,6 +236,14 @@ var StorageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetProfile",
 			Handler:    _StorageService_GetProfile_Handler,
+		},
+		{
+			MethodName: "ListApplicationProfiles",
+			Handler:    _StorageService_ListApplicationProfiles_Handler,
+		},
+		{
+			MethodName: "ListNetworkNeighborhoods",
+			Handler:    _StorageService_ListNetworkNeighborhoods_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

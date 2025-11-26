@@ -14,8 +14,10 @@ import (
 
 // Mock StorageServiceClient for testing
 type mockStorageServiceClient struct {
-	sendContainerProfileFunc func(ctx context.Context, in *proto.SendContainerProfileRequest, opts ...grpc.CallOption) (*proto.SendContainerProfileResponse, error)
-	getProfileFunc           func(ctx context.Context, in *proto.GetProfileRequest, opts ...grpc.CallOption) (*proto.GetProfileResponse, error)
+	sendContainerProfileFunc     func(ctx context.Context, in *proto.SendContainerProfileRequest, opts ...grpc.CallOption) (*proto.SendContainerProfileResponse, error)
+	getProfileFunc               func(ctx context.Context, in *proto.GetProfileRequest, opts ...grpc.CallOption) (*proto.GetProfileResponse, error)
+	listApplicationProfilesFunc  func(ctx context.Context, in *proto.ListApplicationProfilesRequest, opts ...grpc.CallOption) (*proto.ListApplicationProfilesResponse, error)
+	listNetworkNeighborhoodsFunc func(ctx context.Context, in *proto.ListNetworkNeighborhoodsRequest, opts ...grpc.CallOption) (*proto.ListNetworkNeighborhoodsResponse, error)
 }
 
 func (m *mockStorageServiceClient) SendContainerProfile(ctx context.Context, in *proto.SendContainerProfileRequest, opts ...grpc.CallOption) (*proto.SendContainerProfileResponse, error) {
@@ -30,6 +32,20 @@ func (m *mockStorageServiceClient) GetProfile(ctx context.Context, in *proto.Get
 		return m.getProfileFunc(ctx, in, opts...)
 	}
 	return &proto.GetProfileResponse{Success: true}, nil
+}
+
+func (m *mockStorageServiceClient) ListApplicationProfiles(ctx context.Context, in *proto.ListApplicationProfilesRequest, opts ...grpc.CallOption) (*proto.ListApplicationProfilesResponse, error) {
+	if m.listApplicationProfilesFunc != nil {
+		return m.listApplicationProfilesFunc(ctx, in, opts...)
+	}
+	return &proto.ListApplicationProfilesResponse{Success: true}, nil
+}
+
+func (m *mockStorageServiceClient) ListNetworkNeighborhoods(ctx context.Context, in *proto.ListNetworkNeighborhoodsRequest, opts ...grpc.CallOption) (*proto.ListNetworkNeighborhoodsResponse, error) {
+	if m.listNetworkNeighborhoodsFunc != nil {
+		return m.listNetworkNeighborhoodsFunc(ctx, in, opts...)
+	}
+	return &proto.ListNetworkNeighborhoodsResponse{Success: true}, nil
 }
 
 func TestNewStorageClient(t *testing.T) {
@@ -148,6 +164,79 @@ func TestStorageClient_NotConnected(t *testing.T) {
 	resp, err := client.SendContainerProfile(context.Background(), &v1beta1.ContainerProfile{}, "test-cluster")
 	assert.Error(t, err)
 	assert.Nil(t, resp)
+	assert.Contains(t, err.Error(), "not connected")
+}
+
+func TestStorageClient_ListApplicationProfiles(t *testing.T) {
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key")
+	require.NoError(t, err)
+
+	mockClient := &mockStorageServiceClient{
+		listApplicationProfilesFunc: func(ctx context.Context, in *proto.ListApplicationProfilesRequest, opts ...grpc.CallOption) (*proto.ListApplicationProfilesResponse, error) {
+			assert.Equal(t, "default", in.Namespace)
+			assert.Equal(t, "test-account", in.CustomerGuid)
+			assert.Equal(t, "test-cluster", in.Cluster)
+			return &proto.ListApplicationProfilesResponse{
+				Success: true,
+				ApplicationProfiles: []*v1beta1.ApplicationProfile{
+					{}, // Spec is nil
+					{}, // Spec is nil
+				},
+			}, nil
+		},
+	}
+	client.protoClient = mockClient
+
+	list, err := client.ListApplicationProfiles(context.Background(), "default", "test-cluster")
+	require.NoError(t, err)
+	assert.NotNil(t, list)
+	assert.Len(t, list.Items, 2)
+}
+
+func TestStorageClient_ListNetworkNeighborhoods(t *testing.T) {
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key")
+	require.NoError(t, err)
+
+	mockClient := &mockStorageServiceClient{
+		listNetworkNeighborhoodsFunc: func(ctx context.Context, in *proto.ListNetworkNeighborhoodsRequest, opts ...grpc.CallOption) (*proto.ListNetworkNeighborhoodsResponse, error) {
+			assert.Equal(t, "kube-system", in.Namespace)
+			assert.Equal(t, "test-account", in.CustomerGuid)
+			assert.Equal(t, "test-cluster", in.Cluster)
+			return &proto.ListNetworkNeighborhoodsResponse{
+				Success: true,
+				NetworkNeighborhoods: []*v1beta1.NetworkNeighborhood{
+					{}, // Spec is nil
+					{}, // Spec is nil
+					{}, // Spec is nil
+				},
+			}, nil
+		},
+	}
+	client.protoClient = mockClient
+
+	list, err := client.ListNetworkNeighborhoods(context.Background(), "kube-system", "test-cluster")
+	require.NoError(t, err)
+	assert.NotNil(t, list)
+	assert.Len(t, list.Items, 3)
+}
+
+func TestStorageClient_ListApplicationProfiles_NotConnected(t *testing.T) {
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key")
+	require.NoError(t, err)
+
+	list, err := client.ListApplicationProfiles(context.Background(), "default", "test-cluster")
+	assert.Error(t, err)
+	assert.Nil(t, list)
+	assert.Contains(t, err.Error(), "not connected")
+}
+
+func TestStorageClient_ListNetworkNeighborhoods_NotConnected(t *testing.T) {
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key")
+	require.NoError(t, err)
+
+	list, err := client.ListNetworkNeighborhoods(context.Background(), "default", "test-cluster")
+	assert.Error(t, err)
+	assert.Nil(t, list)
 	assert.Contains(t, err.Error(), "not connected")
 }
 

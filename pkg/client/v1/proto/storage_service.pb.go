@@ -379,6 +379,280 @@ func (x *GetProfileResponse) GetNetworkNeighborhood() *v1beta1.NetworkNeighborho
 	return nil
 }
 
+// ListApplicationProfilesRequest requests a list of ApplicationProfiles in a namespace
+type ListApplicationProfilesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Namespace to list profiles from
+	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// CustomerGUID identifies the customer
+	CustomerGuid string `protobuf:"bytes,2,opt,name=customer_guid,json=customerGuid,proto3" json:"customer_guid,omitempty"`
+	// Cluster name
+	Cluster       string `protobuf:"bytes,3,opt,name=cluster,proto3" json:"cluster,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListApplicationProfilesRequest) Reset() {
+	*x = ListApplicationProfilesRequest{}
+	mi := &file_storage_service_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListApplicationProfilesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListApplicationProfilesRequest) ProtoMessage() {}
+
+func (x *ListApplicationProfilesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_storage_service_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListApplicationProfilesRequest.ProtoReflect.Descriptor instead.
+func (*ListApplicationProfilesRequest) Descriptor() ([]byte, []int) {
+	return file_storage_service_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ListApplicationProfilesRequest) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *ListApplicationProfilesRequest) GetCustomerGuid() string {
+	if x != nil {
+		return x.CustomerGuid
+	}
+	return ""
+}
+
+func (x *ListApplicationProfilesRequest) GetCluster() string {
+	if x != nil {
+		return x.Cluster
+	}
+	return ""
+}
+
+// ListApplicationProfilesResponse contains the list of ApplicationProfiles (with nil Spec)
+type ListApplicationProfilesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Success indicates if the list was successfully retrieved
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	// Error message if the operation failed
+	ErrorMessage string `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	// Error code for programmatic error handling
+	ErrorCode ErrorCode `protobuf:"varint,3,opt,name=error_code,json=errorCode,proto3,enum=storageserver.v1.ErrorCode" json:"error_code,omitempty"`
+	// ApplicationProfiles list (Spec will be nil for each item)
+	ApplicationProfiles []*v1beta1.ApplicationProfile `protobuf:"bytes,4,rep,name=application_profiles,json=applicationProfiles,proto3" json:"application_profiles,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *ListApplicationProfilesResponse) Reset() {
+	*x = ListApplicationProfilesResponse{}
+	mi := &file_storage_service_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListApplicationProfilesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListApplicationProfilesResponse) ProtoMessage() {}
+
+func (x *ListApplicationProfilesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_storage_service_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListApplicationProfilesResponse.ProtoReflect.Descriptor instead.
+func (*ListApplicationProfilesResponse) Descriptor() ([]byte, []int) {
+	return file_storage_service_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ListApplicationProfilesResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *ListApplicationProfilesResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *ListApplicationProfilesResponse) GetErrorCode() ErrorCode {
+	if x != nil {
+		return x.ErrorCode
+	}
+	return ErrorCode_ERROR_CODE_UNSPECIFIED
+}
+
+func (x *ListApplicationProfilesResponse) GetApplicationProfiles() []*v1beta1.ApplicationProfile {
+	if x != nil {
+		return x.ApplicationProfiles
+	}
+	return nil
+}
+
+// ListNetworkNeighborhoodsRequest requests a list of NetworkNeighborhoods in a namespace
+type ListNetworkNeighborhoodsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Namespace to list neighborhoods from
+	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// CustomerGUID identifies the customer
+	CustomerGuid string `protobuf:"bytes,2,opt,name=customer_guid,json=customerGuid,proto3" json:"customer_guid,omitempty"`
+	// Cluster name
+	Cluster       string `protobuf:"bytes,3,opt,name=cluster,proto3" json:"cluster,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListNetworkNeighborhoodsRequest) Reset() {
+	*x = ListNetworkNeighborhoodsRequest{}
+	mi := &file_storage_service_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListNetworkNeighborhoodsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListNetworkNeighborhoodsRequest) ProtoMessage() {}
+
+func (x *ListNetworkNeighborhoodsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_storage_service_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListNetworkNeighborhoodsRequest.ProtoReflect.Descriptor instead.
+func (*ListNetworkNeighborhoodsRequest) Descriptor() ([]byte, []int) {
+	return file_storage_service_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ListNetworkNeighborhoodsRequest) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *ListNetworkNeighborhoodsRequest) GetCustomerGuid() string {
+	if x != nil {
+		return x.CustomerGuid
+	}
+	return ""
+}
+
+func (x *ListNetworkNeighborhoodsRequest) GetCluster() string {
+	if x != nil {
+		return x.Cluster
+	}
+	return ""
+}
+
+// ListNetworkNeighborhoodsResponse contains the list of NetworkNeighborhoods (with nil Spec)
+type ListNetworkNeighborhoodsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Success indicates if the list was successfully retrieved
+	Success bool `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	// Error message if the operation failed
+	ErrorMessage string `protobuf:"bytes,2,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	// Error code for programmatic error handling
+	ErrorCode ErrorCode `protobuf:"varint,3,opt,name=error_code,json=errorCode,proto3,enum=storageserver.v1.ErrorCode" json:"error_code,omitempty"`
+	// NetworkNeighborhoods list (Spec will be nil for each item)
+	NetworkNeighborhoods []*v1beta1.NetworkNeighborhood `protobuf:"bytes,4,rep,name=network_neighborhoods,json=networkNeighborhoods,proto3" json:"network_neighborhoods,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *ListNetworkNeighborhoodsResponse) Reset() {
+	*x = ListNetworkNeighborhoodsResponse{}
+	mi := &file_storage_service_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListNetworkNeighborhoodsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListNetworkNeighborhoodsResponse) ProtoMessage() {}
+
+func (x *ListNetworkNeighborhoodsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_storage_service_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListNetworkNeighborhoodsResponse.ProtoReflect.Descriptor instead.
+func (*ListNetworkNeighborhoodsResponse) Descriptor() ([]byte, []int) {
+	return file_storage_service_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ListNetworkNeighborhoodsResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *ListNetworkNeighborhoodsResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *ListNetworkNeighborhoodsResponse) GetErrorCode() ErrorCode {
+	if x != nil {
+		return x.ErrorCode
+	}
+	return ErrorCode_ERROR_CODE_UNSPECIFIED
+}
+
+func (x *ListNetworkNeighborhoodsResponse) GetNetworkNeighborhoods() []*v1beta1.NetworkNeighborhood {
+	if x != nil {
+		return x.NetworkNeighborhoods
+	}
+	return nil
+}
+
 var File_storage_service_proto protoreflect.FileDescriptor
 
 const file_storage_service_proto_rawDesc = "" +
@@ -405,7 +679,27 @@ const file_storage_service_proto_rawDesc = "" +
 	"\n" +
 	"error_code\x18\x03 \x01(\x0e2\x1b.storageserver.v1.ErrorCodeR\terrorCode\x12\x86\x01\n" +
 	"\x13application_profile\x18\x04 \x01(\v2U.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfileR\x12applicationProfile\x12\x89\x01\n" +
-	"\x14network_neighborhood\x18\x05 \x01(\v2V.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhoodR\x13networkNeighborhood*\x86\x02\n" +
+	"\x14network_neighborhood\x18\x05 \x01(\v2V.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhoodR\x13networkNeighborhood\"}\n" +
+	"\x1eListApplicationProfilesRequest\x12\x1c\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12#\n" +
+	"\rcustomer_guid\x18\x02 \x01(\tR\fcustomerGuid\x12\x18\n" +
+	"\acluster\x18\x03 \x01(\tR\acluster\"\xa7\x02\n" +
+	"\x1fListApplicationProfilesResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
+	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12:\n" +
+	"\n" +
+	"error_code\x18\x03 \x01(\x0e2\x1b.storageserver.v1.ErrorCodeR\terrorCode\x12\x88\x01\n" +
+	"\x14application_profiles\x18\x04 \x03(\v2U.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfileR\x13applicationProfiles\"~\n" +
+	"\x1fListNetworkNeighborhoodsRequest\x12\x1c\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12#\n" +
+	"\rcustomer_guid\x18\x02 \x01(\tR\fcustomerGuid\x12\x18\n" +
+	"\acluster\x18\x03 \x01(\tR\acluster\"\xab\x02\n" +
+	" ListNetworkNeighborhoodsResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
+	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12:\n" +
+	"\n" +
+	"error_code\x18\x03 \x01(\x0e2\x1b.storageserver.v1.ErrorCodeR\terrorCode\x12\x8b\x01\n" +
+	"\x15network_neighborhoods\x18\x04 \x03(\v2V.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhoodR\x14networkNeighborhoods*\x86\x02\n" +
 	"\tErrorCode\x12\x1a\n" +
 	"\x16ERROR_CODE_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aERROR_CODE_INVALID_REQUEST\x10\x01\x12\x1b\n" +
@@ -414,11 +708,13 @@ const file_storage_service_proto_rawDesc = "" +
 	"\x1cERROR_CODE_PROFILE_COMPLETED\x10\x04\x12 \n" +
 	"\x1cERROR_CODE_PROFILE_NOT_FOUND\x10\x05\x12\x1d\n" +
 	"\x19ERROR_CODE_INTERNAL_ERROR\x10\x06\x12\x1b\n" +
-	"\x17ERROR_CODE_PULSAR_ERROR\x10\a2\xe0\x01\n" +
+	"\x17ERROR_CODE_PULSAR_ERROR\x10\a2\xe4\x03\n" +
 	"\x0eStorageService\x12u\n" +
 	"\x14SendContainerProfile\x12-.storageserver.v1.SendContainerProfileRequest\x1a..storageserver.v1.SendContainerProfileResponse\x12W\n" +
 	"\n" +
-	"GetProfile\x12#.storageserver.v1.GetProfileRequest\x1a$.storageserver.v1.GetProfileResponseB2Z0github.com/kubescape/backend/pkg/client/v1/protob\x06proto3"
+	"GetProfile\x12#.storageserver.v1.GetProfileRequest\x1a$.storageserver.v1.GetProfileResponse\x12~\n" +
+	"\x17ListApplicationProfiles\x120.storageserver.v1.ListApplicationProfilesRequest\x1a1.storageserver.v1.ListApplicationProfilesResponse\x12\x81\x01\n" +
+	"\x18ListNetworkNeighborhoods\x121.storageserver.v1.ListNetworkNeighborhoodsRequest\x1a2.storageserver.v1.ListNetworkNeighborhoodsResponseB2Z0github.com/kubescape/backend/pkg/client/v1/protob\x06proto3"
 
 var (
 	file_storage_service_proto_rawDescOnce sync.Once
@@ -433,32 +729,44 @@ func file_storage_service_proto_rawDescGZIP() []byte {
 }
 
 var file_storage_service_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_storage_service_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_storage_service_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_storage_service_proto_goTypes = []any{
-	(ErrorCode)(0),                       // 0: storageserver.v1.ErrorCode
-	(*SendContainerProfileRequest)(nil),  // 1: storageserver.v1.SendContainerProfileRequest
-	(*SendContainerProfileResponse)(nil), // 2: storageserver.v1.SendContainerProfileResponse
-	(*GetProfileRequest)(nil),            // 3: storageserver.v1.GetProfileRequest
-	(*GetProfileResponse)(nil),           // 4: storageserver.v1.GetProfileResponse
-	(*v1beta1.ContainerProfile)(nil),     // 5: github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ContainerProfile
-	(*v1beta1.ApplicationProfile)(nil),   // 6: github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfile
-	(*v1beta1.NetworkNeighborhood)(nil),  // 7: github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhood
+	(ErrorCode)(0),                           // 0: storageserver.v1.ErrorCode
+	(*SendContainerProfileRequest)(nil),      // 1: storageserver.v1.SendContainerProfileRequest
+	(*SendContainerProfileResponse)(nil),     // 2: storageserver.v1.SendContainerProfileResponse
+	(*GetProfileRequest)(nil),                // 3: storageserver.v1.GetProfileRequest
+	(*GetProfileResponse)(nil),               // 4: storageserver.v1.GetProfileResponse
+	(*ListApplicationProfilesRequest)(nil),   // 5: storageserver.v1.ListApplicationProfilesRequest
+	(*ListApplicationProfilesResponse)(nil),  // 6: storageserver.v1.ListApplicationProfilesResponse
+	(*ListNetworkNeighborhoodsRequest)(nil),  // 7: storageserver.v1.ListNetworkNeighborhoodsRequest
+	(*ListNetworkNeighborhoodsResponse)(nil), // 8: storageserver.v1.ListNetworkNeighborhoodsResponse
+	(*v1beta1.ContainerProfile)(nil),         // 9: github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ContainerProfile
+	(*v1beta1.ApplicationProfile)(nil),       // 10: github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfile
+	(*v1beta1.NetworkNeighborhood)(nil),      // 11: github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhood
 }
 var file_storage_service_proto_depIdxs = []int32{
-	5, // 0: storageserver.v1.SendContainerProfileRequest.container_profile:type_name -> github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ContainerProfile
-	0, // 1: storageserver.v1.SendContainerProfileResponse.error_code:type_name -> storageserver.v1.ErrorCode
-	0, // 2: storageserver.v1.GetProfileResponse.error_code:type_name -> storageserver.v1.ErrorCode
-	6, // 3: storageserver.v1.GetProfileResponse.application_profile:type_name -> github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfile
-	7, // 4: storageserver.v1.GetProfileResponse.network_neighborhood:type_name -> github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhood
-	1, // 5: storageserver.v1.StorageService.SendContainerProfile:input_type -> storageserver.v1.SendContainerProfileRequest
-	3, // 6: storageserver.v1.StorageService.GetProfile:input_type -> storageserver.v1.GetProfileRequest
-	2, // 7: storageserver.v1.StorageService.SendContainerProfile:output_type -> storageserver.v1.SendContainerProfileResponse
-	4, // 8: storageserver.v1.StorageService.GetProfile:output_type -> storageserver.v1.GetProfileResponse
-	7, // [7:9] is the sub-list for method output_type
-	5, // [5:7] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	9,  // 0: storageserver.v1.SendContainerProfileRequest.container_profile:type_name -> github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ContainerProfile
+	0,  // 1: storageserver.v1.SendContainerProfileResponse.error_code:type_name -> storageserver.v1.ErrorCode
+	0,  // 2: storageserver.v1.GetProfileResponse.error_code:type_name -> storageserver.v1.ErrorCode
+	10, // 3: storageserver.v1.GetProfileResponse.application_profile:type_name -> github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfile
+	11, // 4: storageserver.v1.GetProfileResponse.network_neighborhood:type_name -> github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhood
+	0,  // 5: storageserver.v1.ListApplicationProfilesResponse.error_code:type_name -> storageserver.v1.ErrorCode
+	10, // 6: storageserver.v1.ListApplicationProfilesResponse.application_profiles:type_name -> github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfile
+	0,  // 7: storageserver.v1.ListNetworkNeighborhoodsResponse.error_code:type_name -> storageserver.v1.ErrorCode
+	11, // 8: storageserver.v1.ListNetworkNeighborhoodsResponse.network_neighborhoods:type_name -> github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhood
+	1,  // 9: storageserver.v1.StorageService.SendContainerProfile:input_type -> storageserver.v1.SendContainerProfileRequest
+	3,  // 10: storageserver.v1.StorageService.GetProfile:input_type -> storageserver.v1.GetProfileRequest
+	5,  // 11: storageserver.v1.StorageService.ListApplicationProfiles:input_type -> storageserver.v1.ListApplicationProfilesRequest
+	7,  // 12: storageserver.v1.StorageService.ListNetworkNeighborhoods:input_type -> storageserver.v1.ListNetworkNeighborhoodsRequest
+	2,  // 13: storageserver.v1.StorageService.SendContainerProfile:output_type -> storageserver.v1.SendContainerProfileResponse
+	4,  // 14: storageserver.v1.StorageService.GetProfile:output_type -> storageserver.v1.GetProfileResponse
+	6,  // 15: storageserver.v1.StorageService.ListApplicationProfiles:output_type -> storageserver.v1.ListApplicationProfilesResponse
+	8,  // 16: storageserver.v1.StorageService.ListNetworkNeighborhoods:output_type -> storageserver.v1.ListNetworkNeighborhoodsResponse
+	13, // [13:17] is the sub-list for method output_type
+	9,  // [9:13] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_storage_service_proto_init() }
@@ -472,7 +780,7 @@ func file_storage_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_storage_service_proto_rawDesc), len(file_storage_service_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   4,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
