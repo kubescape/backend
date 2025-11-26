@@ -21,7 +21,7 @@ type ServicesV3 struct {
 	ApiServerUrl         string `json:"api-server"`
 	MetricsUrl           string `json:"metrics"`
 	SynchronizerUrl      string `json:"synchronizer"`
-	GrpcServerUrl        string `json:"grpc-server"`
+	StorageUrl           string `json:"storage"`
 }
 
 type ServiceDiscoveryFileV3 struct {

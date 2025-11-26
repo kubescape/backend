@@ -137,14 +137,12 @@ func (s *ServicesV3) GetGatewayUrl() string {
 	panic("deprecated method called")
 }
 
-// deprecated
-func (s *ServicesV3) SetGrpcServerUrl(val string) {
-	s.GrpcServerUrl = val
+func (s *ServicesV3) SetStorageUrl(val string) {
+	s.StorageUrl = val
 }
 
-// deprecated
-func (s *ServicesV3) GetGrpcServerUrl() string {
-	return s.GrpcServerUrl
+func (s *ServicesV3) GetStorageUrl() string {
+	return s.StorageUrl
 }
 
 func NewServiceDiscoveryFileV3(path string) *ServiceDiscoveryFileV3 {
