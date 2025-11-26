@@ -42,10 +42,3 @@ const (
 	GrpcAccountKey = "customer-guid"
 )
 
-// GrpcContextKey is a typed key for gRPC context values to avoid collisions
-type GrpcContextKey string
-
-const (
-	// GrpcCustomerGUIDContextKey is the context key for storing customer GUID in gRPC handlers
-	GrpcCustomerGUIDContextKey GrpcContextKey = "customerGUID"
-)
