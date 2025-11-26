@@ -35,4 +35,17 @@ const (
 	RegolibraryVersion            = "v2"
 
 	AccessKeyHeader = "X-API-KEY"
+
+	// GrpcAccessKeyHeader is the metadata key for access key authentication in gRPC calls
+	GrpcAccessKeyHeader = "x-api-token"
+	// GrpcAccountKey is the metadata key for customer GUID in gRPC calls
+	GrpcAccountKey = "customer-guid"
+)
+
+// GrpcContextKey is a typed key for gRPC context values to avoid collisions
+type GrpcContextKey string
+
+const (
+	// GrpcCustomerGUIDContextKey is the context key for storing customer GUID in gRPC handlers
+	GrpcCustomerGUIDContextKey GrpcContextKey = "customerGUID"
 )

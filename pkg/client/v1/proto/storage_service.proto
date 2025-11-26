@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package storageserver.v1;
+
+option go_package = "github.com/kubescape/backend/pkg/client/v1/proto";
+
+import "github.com/kubescape/storage/pkg/apis/softwarecomposition/v1beta1/generated.proto";
+
+// StorageService provides gRPC endpoints for node agent to communicate with backend storage
+service StorageService {
+  // SendContainerProfile receives a container profile (time-series snapshot) from node agent
+  // and sends it to Pulsar for processing by the ingester
+  rpc SendContainerProfile(SendContainerProfileRequest) returns (SendContainerProfileResponse);
+
+  // GetProfile retrieves an aggregated profile (ApplicationProfile or NetworkNeighborhood)
+  // by fetching container profiles from S3 and aggregating them
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+}
+
+// SendContainerProfileRequest contains the container profile to be stored
+message SendContainerProfileRequest {
+  // ContainerProfile is the time-series container profile from node agent
+  github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ContainerProfile container_profile = 1;
+  
+  // CustomerGUID identifies the customer
+  string customer_guid = 2;
+  
+  // Cluster name
+  string cluster = 3;
+}
+
+// SendContainerProfileResponse indicates success or failure of the operation
+message SendContainerProfileResponse {
+  // Success indicates if the profile was successfully sent to Pulsar
+  bool success = 1;
+  
+  // Error message if the operation failed
+  string error_message = 2;
+  
+  // Error code for programmatic error handling
+  ErrorCode error_code = 3;
+}
+
+// GetProfileRequest requests an aggregated profile
+message GetProfileRequest {
+  // Kind specifies the type of profile: "applicationProfile" or "networkNeighborhood"
+  string kind = 1;
+  
+  // Namespace of the workload
+  string namespace = 2;
+  
+  // Name of the workload
+  string name = 3;
+  
+  // CustomerGUID identifies the customer
+  string customer_guid = 4;
+  
+  // Cluster name
+  string cluster = 5;
+}
+
+// GetProfileResponse contains the aggregated profile
+message GetProfileResponse {
+  // Success indicates if the profile was successfully retrieved
+  bool success = 1;
+  
+  // Error message if the operation failed
+  string error_message = 2;
+  
+  // Error code for programmatic error handling
+  ErrorCode error_code = 3;
+  
+  // ApplicationProfile is populated when kind is "applicationProfile"
+  github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfile application_profile = 4;
+  
+  // NetworkNeighborhood is populated when kind is "networkNeighborhood"
+  github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhood network_neighborhood = 5;
+}
+
+// ErrorCode provides specific error types for programmatic handling
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_INVALID_REQUEST = 1;
+  ERROR_CODE_UNAUTHORIZED = 2;
+  ERROR_CODE_PROFILE_TOO_LARGE = 3;
+  ERROR_CODE_PROFILE_COMPLETED = 4;
+  ERROR_CODE_PROFILE_NOT_FOUND = 5;
+  ERROR_CODE_INTERNAL_ERROR = 6;
+  ERROR_CODE_PULSAR_ERROR = 7;
+}
