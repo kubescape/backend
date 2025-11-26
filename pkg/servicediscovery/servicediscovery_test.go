@@ -187,7 +187,7 @@ func TestServiceDiscoveryClientV3(t *testing.T) {
 	assert.NotEmpty(t, services.GetMetricsUrl())
 	assert.NotEmpty(t, services.GetReportReceiverHttpUrl())
 	assert.NotEmpty(t, services.GetSynchronizerUrl())
-	assert.NotEmpty(t, services.GetGrpcServerUrl())
+	assert.NotEmpty(t, services.GetStorageUrl())
 
 }
 
@@ -209,11 +209,11 @@ func TestServiceDiscoveryFileV3(t *testing.T) {
 	assert.NotEmpty(t, services.GetMetricsUrl())
 	assert.NotEmpty(t, services.GetReportReceiverHttpUrl())
 	assert.NotEmpty(t, services.GetSynchronizerUrl())
-	assert.NotEmpty(t, services.GetGrpcServerUrl())
+	assert.NotEmpty(t, services.GetStorageUrl())
 }
 
 func TestServiceDiscoveryStreamV3(t *testing.T) {
-	stream := []byte("{\"version\": \"v3\",\"response\": {\"grpc-server\":\"https://grpc.test.com\",\"event-receiver-http\": \"https://er-test.com\",\"api-server\": \"https://api.test.com\",\"metrics\": \"https://metrics.test.com\", \"synchronizer\": \"wss://synchronizer.test.com\"}}")
+	stream := []byte("{\"version\": \"v3\",\"response\": {\"storage\":\"https://grpc.test.com\",\"event-receiver-http\": \"https://er-test.com\",\"api-server\": \"https://api.test.com\",\"metrics\": \"https://metrics.test.com\", \"synchronizer\": \"wss://synchronizer.test.com\"}}")
 	services, err := GetServices(
 		v3.NewServiceDiscoveryStreamV3(stream),
 	)
@@ -231,5 +231,5 @@ func TestServiceDiscoveryStreamV3(t *testing.T) {
 	assert.NotEmpty(t, services.GetMetricsUrl())
 	assert.NotEmpty(t, services.GetReportReceiverHttpUrl())
 	assert.NotEmpty(t, services.GetSynchronizerUrl())
-	assert.NotEmpty(t, services.GetGrpcServerUrl())
+	assert.NotEmpty(t, services.GetStorageUrl())
 }

@@ -12,7 +12,7 @@ type IBackendServices interface {
 	// deprecated - use v1 or v2
 	SetGatewayUrl(string)
 	SetApiServerUrl(string)
-	SetGrpcServerUrl(string)
+	SetStorageUrl(string)
 	SetMetricsUrl(string)
 	SetSynchronizerUrl(string)
 	GetReportReceiverHttpUrl() string
@@ -23,7 +23,7 @@ type IBackendServices interface {
 	GetApiServerUrl() string
 	GetMetricsUrl() string
 	GetSynchronizerUrl() string
-	GetGrpcServerUrl() string
+	GetStorageUrl() string
 }
 
 type IServiceDiscoveryClient interface {
