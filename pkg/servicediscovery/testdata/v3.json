@@ -1,0 +1,10 @@
+{
+    "version": "v3",
+    "response": {
+        "event-receiver-http": "https://er-test.com",
+        "api-server": "https://api.test.com",
+        "metrics": "https://metrics.test.com",
+        "synchronizer": "wss://synchronizer.test.com",
+        "grpc-server": "https://grpc.test.com"
+    }
+}

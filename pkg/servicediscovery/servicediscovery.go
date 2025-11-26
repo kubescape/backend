@@ -11,6 +11,7 @@ import (
 var supporterVersions = []string{
 	"v1",
 	"v2",
+	"v3",
 }
 
 // WriteServiceDiscoveryResponse writes the service discovery response to the HTTP response writer
