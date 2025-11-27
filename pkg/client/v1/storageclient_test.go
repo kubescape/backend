@@ -141,7 +141,7 @@ func TestStorageClient_GetProfile(t *testing.T) {
 
 	mockClient := &mockStorageServiceClient{
 		getProfileFunc: func(ctx context.Context, in *proto.GetProfileRequest, opts ...grpc.CallOption) (*proto.GetProfileResponse, error) {
-			assert.Equal(t, "applicationProfile", in.Kind)
+			assert.Equal(t, "ApplicationProfile", in.Kind)
 			assert.Equal(t, "default", in.Namespace)
 			assert.Equal(t, "test-app", in.Name)
 			return &proto.GetProfileResponse{
