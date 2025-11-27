@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 	backendv1 "github.com/kubescape/backend/pkg/server/v1"
 	"github.com/kubescape/storage/pkg/apis/softwarecomposition/v1beta1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
@@ -122,15 +124,11 @@ func NewStorageClient(grpcURL, accountID, accessKey string, opts ...StorageClien
 		StorageClientOptions: storageClientOptionsWithDefaults(opts),
 		accountID:            accountID,
 		accessKey:            accessKey,
-		address:              config.URL,
+		address:              fmt.Sprintf("%s:%d", config.Host, config.Port),
 		grpcConfig:           config,
 	}
 
-	// Create gRPC metadata with auth headers
-	client.metadata = metadata.Pairs(
-		backendv1.GrpcAccessKeyHeader, accessKey,
-		backendv1.GrpcAccountKey, accountID,
-	)
+	client.refreshMetadata()
 
 	return client, nil
 }
@@ -138,17 +136,19 @@ func NewStorageClient(grpcURL, accountID, accessKey string, opts ...StorageClien
 // SetAccountID sets the customer account GUID
 func (c *StorageClient) SetAccountID(value string) {
 	c.accountID = value
-	c.metadata = metadata.Pairs(
-		backendv1.GrpcAccessKeyHeader, c.accessKey,
-		backendv1.GrpcAccountKey, value,
-	)
+	c.refreshMetadata()
 }
 
 // SetAccessKey sets the API access key
 func (c *StorageClient) SetAccessKey(value string) {
 	c.accessKey = value
+	c.refreshMetadata()
+}
+
+// refreshMetadata rebuilds the gRPC metadata with current credentials
+func (c *StorageClient) refreshMetadata() {
 	c.metadata = metadata.Pairs(
-		backendv1.GrpcAccessKeyHeader, value,
+		backendv1.GrpcAccessKeyHeader, c.accessKey,
 		backendv1.GrpcAccountKey, c.accountID,
 	)
 }
@@ -184,8 +184,8 @@ func (c *StorageClient) Connect() error {
 
 	// Determine if connection should be secure
 	if c.grpcConfig != nil && c.grpcConfig.IsSecure {
-		// TODO: Add TLS credentials support for grpcs://
-		return fmt.Errorf("TLS support not yet implemented, use grpc:// scheme for insecure connections")
+		// Use TLS with system CA certificates (for ingress-terminated TLS)
+		dialOpts = append(dialOpts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
 	} else {
 		// Use insecure credentials
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -216,11 +216,6 @@ func (c *StorageClient) Close() error {
 // IsConnected returns true if the client is connected to the server
 func (c *StorageClient) IsConnected() bool {
 	return c.conn != nil
-}
-
-// GetConnection returns the underlying gRPC connection (for advanced usage)
-func (c *StorageClient) GetConnection() *grpc.ClientConn {
-	return c.conn
 }
 
 // withMetadata returns a context with auth metadata attached
@@ -258,7 +253,7 @@ func (c *StorageClient) GetApplicationProfile(ctx context.Context, namespace, na
 	}
 
 	req := &proto.GetProfileRequest{
-		Kind:         "applicationProfile",
+		Kind:         "ApplicationProfile",
 		Namespace:    namespace,
 		Name:         name,
 		CustomerGuid: c.accountID,
@@ -292,7 +287,7 @@ func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, n
 	}
 
 	req := &proto.GetProfileRequest{
-		Kind:         "networkNeighborhood",
+		Kind:         "NetworkNeighborhood",
 		Namespace:    namespace,
 		Name:         name,
 		CustomerGuid: c.accountID,
@@ -405,9 +400,4 @@ func (c *StorageClient) ListNetworkNeighborhoods(ctx context.Context, namespace,
 	}
 
 	return list, nil
-}
-
-// GetProtoClient returns the underlying proto client (for advanced usage)
-func (c *StorageClient) GetProtoClient() proto.StorageServiceClient {
-	return c.protoClient
 }
