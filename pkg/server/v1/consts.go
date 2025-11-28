@@ -35,4 +35,10 @@ const (
 	RegolibraryVersion            = "v2"
 
 	AccessKeyHeader = "X-API-KEY"
+
+	// GrpcAccessKeyHeader is the metadata key for access key authentication in gRPC calls
+	GrpcAccessKeyHeader = "x-api-token"
+	// GrpcAccountKey is the metadata key for Armo account ID in gRPC calls
+	GrpcAccountKey = "account-id"
 )
+
