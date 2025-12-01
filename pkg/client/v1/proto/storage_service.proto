@@ -24,15 +24,10 @@ service StorageService {
 }
 
 // SendContainerProfileRequest contains the container profile to be stored
+// Note: customer_guid and cluster are sent via gRPC metadata headers
 message SendContainerProfileRequest {
   // ContainerProfile is the time-series container profile from node agent
   github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ContainerProfile container_profile = 1;
-  
-  // CustomerGUID identifies the customer
-  string customer_guid = 2;
-  
-  // Cluster name
-  string cluster = 3;
 }
 
 // SendContainerProfileResponse indicates success or failure of the operation
@@ -48,6 +43,7 @@ message SendContainerProfileResponse {
 }
 
 // GetProfileRequest requests an aggregated profile
+// Note: customer_guid and cluster are sent via gRPC metadata headers
 message GetProfileRequest {
   // Kind specifies the type of profile: "applicationProfile" or "networkNeighborhood"
   string kind = 1;
@@ -57,12 +53,6 @@ message GetProfileRequest {
   
   // Name of the workload
   string name = 3;
-  
-  // CustomerGUID identifies the customer
-  string customer_guid = 4;
-  
-  // Cluster name
-  string cluster = 5;
 }
 
 // GetProfileResponse contains the aggregated profile
@@ -96,15 +86,10 @@ enum ErrorCode {
 }
 
 // ListApplicationProfilesRequest requests a list of ApplicationProfiles in a namespace
+// Note: customer_guid and cluster are sent via gRPC metadata headers
 message ListApplicationProfilesRequest {
   // Namespace to list profiles from
   string namespace = 1;
-  
-  // CustomerGUID identifies the customer
-  string customer_guid = 2;
-  
-  // Cluster name
-  string cluster = 3;
 }
 
 // ListApplicationProfilesResponse contains the list of ApplicationProfiles (with nil Spec)
@@ -123,15 +108,10 @@ message ListApplicationProfilesResponse {
 }
 
 // ListNetworkNeighborhoodsRequest requests a list of NetworkNeighborhoods in a namespace
+// Note: customer_guid and cluster are sent via gRPC metadata headers
 message ListNetworkNeighborhoodsRequest {
   // Namespace to list neighborhoods from
   string namespace = 1;
-  
-  // CustomerGUID identifies the customer
-  string customer_guid = 2;
-  
-  // Cluster name
-  string cluster = 3;
 }
 
 // ListNetworkNeighborhoodsResponse contains the list of NetworkNeighborhoods (with nil Spec)

@@ -88,16 +88,13 @@ func (ErrorCode) EnumDescriptor() ([]byte, []int) {
 }
 
 // SendContainerProfileRequest contains the container profile to be stored
+// Note: customer_guid and cluster are sent via gRPC metadata headers
 type SendContainerProfileRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// ContainerProfile is the time-series container profile from node agent
 	ContainerProfile *v1beta1.ContainerProfile `protobuf:"bytes,1,opt,name=container_profile,json=containerProfile,proto3" json:"container_profile,omitempty"`
-	// CustomerGUID identifies the customer
-	CustomerGuid string `protobuf:"bytes,2,opt,name=customer_guid,json=customerGuid,proto3" json:"customer_guid,omitempty"`
-	// Cluster name
-	Cluster       string `protobuf:"bytes,3,opt,name=cluster,proto3" json:"cluster,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *SendContainerProfileRequest) Reset() {
@@ -135,20 +132,6 @@ func (x *SendContainerProfileRequest) GetContainerProfile() *v1beta1.ContainerPr
 		return x.ContainerProfile
 	}
 	return nil
-}
-
-func (x *SendContainerProfileRequest) GetCustomerGuid() string {
-	if x != nil {
-		return x.CustomerGuid
-	}
-	return ""
-}
-
-func (x *SendContainerProfileRequest) GetCluster() string {
-	if x != nil {
-		return x.Cluster
-	}
-	return ""
 }
 
 // SendContainerProfileResponse indicates success or failure of the operation
@@ -216,6 +199,7 @@ func (x *SendContainerProfileResponse) GetErrorCode() ErrorCode {
 }
 
 // GetProfileRequest requests an aggregated profile
+// Note: customer_guid and cluster are sent via gRPC metadata headers
 type GetProfileRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Kind specifies the type of profile: "applicationProfile" or "networkNeighborhood"
@@ -223,11 +207,7 @@ type GetProfileRequest struct {
 	// Namespace of the workload
 	Namespace string `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// Name of the workload
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
-	// CustomerGUID identifies the customer
-	CustomerGuid string `protobuf:"bytes,4,opt,name=customer_guid,json=customerGuid,proto3" json:"customer_guid,omitempty"`
-	// Cluster name
-	Cluster       string `protobuf:"bytes,5,opt,name=cluster,proto3" json:"cluster,omitempty"`
+	Name          string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -279,20 +259,6 @@ func (x *GetProfileRequest) GetNamespace() string {
 func (x *GetProfileRequest) GetName() string {
 	if x != nil {
 		return x.Name
-	}
-	return ""
-}
-
-func (x *GetProfileRequest) GetCustomerGuid() string {
-	if x != nil {
-		return x.CustomerGuid
-	}
-	return ""
-}
-
-func (x *GetProfileRequest) GetCluster() string {
-	if x != nil {
-		return x.Cluster
 	}
 	return ""
 }
@@ -380,14 +346,11 @@ func (x *GetProfileResponse) GetNetworkNeighborhood() *v1beta1.NetworkNeighborho
 }
 
 // ListApplicationProfilesRequest requests a list of ApplicationProfiles in a namespace
+// Note: customer_guid and cluster are sent via gRPC metadata headers
 type ListApplicationProfilesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Namespace to list profiles from
-	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// CustomerGUID identifies the customer
-	CustomerGuid string `protobuf:"bytes,2,opt,name=customer_guid,json=customerGuid,proto3" json:"customer_guid,omitempty"`
-	// Cluster name
-	Cluster       string `protobuf:"bytes,3,opt,name=cluster,proto3" json:"cluster,omitempty"`
+	Namespace     string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -425,20 +388,6 @@ func (*ListApplicationProfilesRequest) Descriptor() ([]byte, []int) {
 func (x *ListApplicationProfilesRequest) GetNamespace() string {
 	if x != nil {
 		return x.Namespace
-	}
-	return ""
-}
-
-func (x *ListApplicationProfilesRequest) GetCustomerGuid() string {
-	if x != nil {
-		return x.CustomerGuid
-	}
-	return ""
-}
-
-func (x *ListApplicationProfilesRequest) GetCluster() string {
-	if x != nil {
-		return x.Cluster
 	}
 	return ""
 }
@@ -517,14 +466,11 @@ func (x *ListApplicationProfilesResponse) GetApplicationProfiles() []*v1beta1.Ap
 }
 
 // ListNetworkNeighborhoodsRequest requests a list of NetworkNeighborhoods in a namespace
+// Note: customer_guid and cluster are sent via gRPC metadata headers
 type ListNetworkNeighborhoodsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Namespace to list neighborhoods from
-	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	// CustomerGUID identifies the customer
-	CustomerGuid string `protobuf:"bytes,2,opt,name=customer_guid,json=customerGuid,proto3" json:"customer_guid,omitempty"`
-	// Cluster name
-	Cluster       string `protobuf:"bytes,3,opt,name=cluster,proto3" json:"cluster,omitempty"`
+	Namespace     string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -562,20 +508,6 @@ func (*ListNetworkNeighborhoodsRequest) Descriptor() ([]byte, []int) {
 func (x *ListNetworkNeighborhoodsRequest) GetNamespace() string {
 	if x != nil {
 		return x.Namespace
-	}
-	return ""
-}
-
-func (x *ListNetworkNeighborhoodsRequest) GetCustomerGuid() string {
-	if x != nil {
-		return x.CustomerGuid
-	}
-	return ""
-}
-
-func (x *ListNetworkNeighborhoodsRequest) GetCluster() string {
-	if x != nil {
-		return x.Cluster
 	}
 	return ""
 }
@@ -657,43 +589,35 @@ var File_storage_service_proto protoreflect.FileDescriptor
 
 const file_storage_service_proto_rawDesc = "" +
 	"\n" +
-	"\x15storage_service.proto\x12\x10storageserver.v1\x1aQgithub.com/kubescape/storage/pkg/apis/softwarecomposition/v1beta1/generated.proto\"\xdf\x01\n" +
+	"\x15storage_service.proto\x12\x10storageserver.v1\x1aQgithub.com/kubescape/storage/pkg/apis/softwarecomposition/v1beta1/generated.proto\"\xa0\x01\n" +
 	"\x1bSendContainerProfileRequest\x12\x80\x01\n" +
-	"\x11container_profile\x18\x01 \x01(\v2S.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ContainerProfileR\x10containerProfile\x12#\n" +
-	"\rcustomer_guid\x18\x02 \x01(\tR\fcustomerGuid\x12\x18\n" +
-	"\acluster\x18\x03 \x01(\tR\acluster\"\x99\x01\n" +
+	"\x11container_profile\x18\x01 \x01(\v2S.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ContainerProfileR\x10containerProfile\"\x99\x01\n" +
 	"\x1cSendContainerProfileResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
 	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12:\n" +
 	"\n" +
-	"error_code\x18\x03 \x01(\x0e2\x1b.storageserver.v1.ErrorCodeR\terrorCode\"\x98\x01\n" +
+	"error_code\x18\x03 \x01(\x0e2\x1b.storageserver.v1.ErrorCodeR\terrorCode\"Y\n" +
 	"\x11GetProfileRequest\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x1c\n" +
 	"\tnamespace\x18\x02 \x01(\tR\tnamespace\x12\x12\n" +
-	"\x04name\x18\x03 \x01(\tR\x04name\x12#\n" +
-	"\rcustomer_guid\x18\x04 \x01(\tR\fcustomerGuid\x12\x18\n" +
-	"\acluster\x18\x05 \x01(\tR\acluster\"\xa4\x03\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\xa4\x03\n" +
 	"\x12GetProfileResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
 	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12:\n" +
 	"\n" +
 	"error_code\x18\x03 \x01(\x0e2\x1b.storageserver.v1.ErrorCodeR\terrorCode\x12\x86\x01\n" +
 	"\x13application_profile\x18\x04 \x01(\v2U.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfileR\x12applicationProfile\x12\x89\x01\n" +
-	"\x14network_neighborhood\x18\x05 \x01(\v2V.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhoodR\x13networkNeighborhood\"}\n" +
+	"\x14network_neighborhood\x18\x05 \x01(\v2V.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhoodR\x13networkNeighborhood\">\n" +
 	"\x1eListApplicationProfilesRequest\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12#\n" +
-	"\rcustomer_guid\x18\x02 \x01(\tR\fcustomerGuid\x12\x18\n" +
-	"\acluster\x18\x03 \x01(\tR\acluster\"\xa7\x02\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\"\xa7\x02\n" +
 	"\x1fListApplicationProfilesResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
 	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12:\n" +
 	"\n" +
 	"error_code\x18\x03 \x01(\x0e2\x1b.storageserver.v1.ErrorCodeR\terrorCode\x12\x88\x01\n" +
-	"\x14application_profiles\x18\x04 \x03(\v2U.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfileR\x13applicationProfiles\"~\n" +
+	"\x14application_profiles\x18\x04 \x03(\v2U.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfileR\x13applicationProfiles\"?\n" +
 	"\x1fListNetworkNeighborhoodsRequest\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12#\n" +
-	"\rcustomer_guid\x18\x02 \x01(\tR\fcustomerGuid\x12\x18\n" +
-	"\acluster\x18\x03 \x01(\tR\acluster\"\xab\x02\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\"\xab\x02\n" +
 	" ListNetworkNeighborhoodsResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
 	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12:\n" +

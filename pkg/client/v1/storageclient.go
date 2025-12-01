@@ -36,6 +36,7 @@ type StorageClient struct {
 	*StorageClientOptions
 	accountID   string
 	accessKey   string
+	cluster     string
 	address     string // host:port format
 	grpcConfig  *GRPCConfig
 	conn        *grpc.ClientConn
@@ -109,7 +110,8 @@ func (c *GRPCConfig) String() string {
 // grpcURL is the full gRPC URL with scheme (e.g., "grpc://storage-server:50051" or "grpcs://storage.example.com:443")
 // accountID is the customer GUID
 // accessKey is the API access token
-func NewStorageClient(grpcURL, accountID, accessKey string, opts ...StorageClientOption) (*StorageClient, error) {
+// cluster is the cluster name
+func NewStorageClient(grpcURL, accountID, accessKey, cluster string, opts ...StorageClientOption) (*StorageClient, error) {
 	if grpcURL == "" {
 		return nil, fmt.Errorf("gRPC URL cannot be empty")
 	}
@@ -124,6 +126,7 @@ func NewStorageClient(grpcURL, accountID, accessKey string, opts ...StorageClien
 		StorageClientOptions: storageClientOptionsWithDefaults(opts),
 		accountID:            accountID,
 		accessKey:            accessKey,
+		cluster:              cluster,
 		address:              fmt.Sprintf("%s:%d", config.Host, config.Port),
 		grpcConfig:           config,
 	}
@@ -145,11 +148,18 @@ func (c *StorageClient) SetAccessKey(value string) {
 	c.refreshMetadata()
 }
 
+// SetCluster sets the cluster name
+func (c *StorageClient) SetCluster(value string) {
+	c.cluster = value
+	c.refreshMetadata()
+}
+
 // refreshMetadata rebuilds the gRPC metadata with current credentials
 func (c *StorageClient) refreshMetadata() {
 	c.metadata = metadata.Pairs(
 		backendv1.GrpcAccessKeyHeader, c.accessKey,
 		backendv1.GrpcAccountKey, c.accountID,
+		backendv1.GrpcClusterKey, c.cluster,
 	)
 }
 
@@ -161,6 +171,11 @@ func (c *StorageClient) GetAccountID() string {
 // GetAccessKey returns the API access key
 func (c *StorageClient) GetAccessKey() string {
 	return c.accessKey
+}
+
+// GetCluster returns the cluster name
+func (c *StorageClient) GetCluster() string {
+	return c.cluster
 }
 
 // GetAddress returns the storage server address
@@ -224,15 +239,13 @@ func (c *StorageClient) withMetadata(ctx context.Context) context.Context {
 }
 
 // SendContainerProfile sends a container profile to the storage server
-func (c *StorageClient) SendContainerProfile(ctx context.Context, profile *v1beta1.ContainerProfile, cluster string) (*proto.SendContainerProfileResponse, error) {
+func (c *StorageClient) SendContainerProfile(ctx context.Context, profile *v1beta1.ContainerProfile) (*proto.SendContainerProfileResponse, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
 	}
 
 	req := &proto.SendContainerProfileRequest{
 		ContainerProfile: profile,
-		CustomerGuid:     c.accountID,
-		Cluster:          cluster,
 	}
 
 	ctx = c.withMetadata(ctx)
@@ -247,17 +260,15 @@ func (c *StorageClient) SendContainerProfile(ctx context.Context, profile *v1bet
 }
 
 // GetApplicationProfile retrieves an aggregated ApplicationProfile from the storage server
-func (c *StorageClient) GetApplicationProfile(ctx context.Context, namespace, name, cluster string) (*v1beta1.ApplicationProfile, error) {
+func (c *StorageClient) GetApplicationProfile(ctx context.Context, namespace, name string) (*v1beta1.ApplicationProfile, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
 	}
 
 	req := &proto.GetProfileRequest{
-		Kind:         "ApplicationProfile",
-		Namespace:    namespace,
-		Name:         name,
-		CustomerGuid: c.accountID,
-		Cluster:      cluster,
+		Kind:      "ApplicationProfile",
+		Namespace: namespace,
+		Name:      name,
 	}
 
 	ctx = c.withMetadata(ctx)
@@ -281,17 +292,15 @@ func (c *StorageClient) GetApplicationProfile(ctx context.Context, namespace, na
 }
 
 // GetNetworkNeighborhood retrieves an aggregated NetworkNeighborhood from the storage server
-func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, name, cluster string) (*v1beta1.NetworkNeighborhood, error) {
+func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, name string) (*v1beta1.NetworkNeighborhood, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
 	}
 
 	req := &proto.GetProfileRequest{
-		Kind:         "NetworkNeighborhood",
-		Namespace:    namespace,
-		Name:         name,
-		CustomerGuid: c.accountID,
-		Cluster:      cluster,
+		Kind:      "NetworkNeighborhood",
+		Namespace: namespace,
+		Name:      name,
 	}
 
 	ctx = c.withMetadata(ctx)
@@ -315,15 +324,13 @@ func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, n
 }
 
 // ListApplicationProfiles lists all ApplicationProfiles in a namespace (returns metadata only, nil Spec)
-func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace, cluster string) (*v1beta1.ApplicationProfileList, error) {
+func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace string) (*v1beta1.ApplicationProfileList, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
 	}
 
 	req := &proto.ListApplicationProfilesRequest{
-		Namespace:    namespace,
-		CustomerGuid: c.accountID,
-		Cluster:      cluster,
+		Namespace: namespace,
 	}
 
 	ctx = c.withMetadata(ctx)
@@ -359,15 +366,13 @@ func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace, 
 }
 
 // ListNetworkNeighborhoods lists all NetworkNeighborhoods in a namespace (returns metadata only, nil Spec)
-func (c *StorageClient) ListNetworkNeighborhoods(ctx context.Context, namespace, cluster string) (*v1beta1.NetworkNeighborhoodList, error) {
+func (c *StorageClient) ListNetworkNeighborhoods(ctx context.Context, namespace string) (*v1beta1.NetworkNeighborhoodList, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
 	}
 
 	req := &proto.ListNetworkNeighborhoodsRequest{
-		Namespace:    namespace,
-		CustomerGuid: c.accountID,
-		Cluster:      cluster,
+		Namespace: namespace,
 	}
 
 	ctx = c.withMetadata(ctx)
