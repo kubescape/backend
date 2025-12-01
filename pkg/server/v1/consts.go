@@ -40,5 +40,7 @@ const (
 	GrpcAccessKeyHeader = "x-api-token"
 	// GrpcAccountKey is the metadata key for Armo account ID in gRPC calls
 	GrpcAccountKey = "account-id"
+	// GrpcClusterKey is the metadata key for cluster name in gRPC calls
+	GrpcClusterKey = "cluster"
 )
 
