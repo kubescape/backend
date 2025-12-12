@@ -186,6 +186,8 @@ func TestStorageClient_ListApplicationProfiles(t *testing.T) {
 		listApplicationProfilesFunc: func(ctx context.Context, in *proto.ListApplicationProfilesRequest, opts ...grpc.CallOption) (*proto.ListApplicationProfilesResponse, error) {
 			assert.Equal(t, "default", in.Namespace)
 			// customer_guid and cluster are now sent via metadata, not in request
+			assert.Equal(t, int64(10), in.Limit)
+			assert.Equal(t, "next-token", in.Cont)
 			return &proto.ListApplicationProfilesResponse{
 				Success: true,
 				ApplicationProfiles: []*v1beta1.ApplicationProfile{
@@ -197,7 +199,7 @@ func TestStorageClient_ListApplicationProfiles(t *testing.T) {
 	}
 	client.protoClient = mockClient
 
-	list, err := client.ListApplicationProfiles(context.Background(), "default")
+	list, err := client.ListApplicationProfiles(context.Background(), "default", 10, "next-token")
 	require.NoError(t, err)
 	assert.NotNil(t, list)
 	assert.Len(t, list.Items, 2)
@@ -211,6 +213,8 @@ func TestStorageClient_ListNetworkNeighborhoods(t *testing.T) {
 		listNetworkNeighborhoodsFunc: func(ctx context.Context, in *proto.ListNetworkNeighborhoodsRequest, opts ...grpc.CallOption) (*proto.ListNetworkNeighborhoodsResponse, error) {
 			assert.Equal(t, "kube-system", in.Namespace)
 			// customer_guid and cluster are now sent via metadata, not in request
+			assert.Equal(t, int64(25), in.Limit)
+			assert.Equal(t, "cont-token", in.Cont)
 			return &proto.ListNetworkNeighborhoodsResponse{
 				Success: true,
 				NetworkNeighborhoods: []*v1beta1.NetworkNeighborhood{
@@ -223,7 +227,7 @@ func TestStorageClient_ListNetworkNeighborhoods(t *testing.T) {
 	}
 	client.protoClient = mockClient
 
-	list, err := client.ListNetworkNeighborhoods(context.Background(), "kube-system")
+	list, err := client.ListNetworkNeighborhoods(context.Background(), "kube-system", 25, "cont-token")
 	require.NoError(t, err)
 	assert.NotNil(t, list)
 	assert.Len(t, list.Items, 3)
@@ -233,7 +237,7 @@ func TestStorageClient_ListApplicationProfiles_NotConnected(t *testing.T) {
 	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
 	require.NoError(t, err)
 
-	list, err := client.ListApplicationProfiles(context.Background(), "default")
+	list, err := client.ListApplicationProfiles(context.Background(), "default", 0, "")
 	assert.Error(t, err)
 	assert.Nil(t, list)
 	assert.Contains(t, err.Error(), "not connected")
@@ -243,7 +247,7 @@ func TestStorageClient_ListNetworkNeighborhoods_NotConnected(t *testing.T) {
 	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
 	require.NoError(t, err)
 
-	list, err := client.ListNetworkNeighborhoods(context.Background(), "default")
+	list, err := client.ListNetworkNeighborhoods(context.Background(), "default", 0, "")
 	assert.Error(t, err)
 	assert.Nil(t, list)
 	assert.Contains(t, err.Error(), "not connected")

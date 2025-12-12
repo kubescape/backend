@@ -34,10 +34,10 @@ message SendContainerProfileRequest {
 message SendContainerProfileResponse {
   // Success indicates if the profile was successfully sent to Pulsar
   bool success = 1;
-  
+
   // Error message if the operation failed
   string error_message = 2;
-  
+
   // Error code for programmatic error handling
   ErrorCode error_code = 3;
 }
@@ -47,10 +47,10 @@ message SendContainerProfileResponse {
 message GetProfileRequest {
   // Kind specifies the type of profile: "applicationProfile" or "networkNeighborhood"
   string kind = 1;
-  
+
   // Namespace of the workload
   string namespace = 2;
-  
+
   // Name of the workload
   string name = 3;
 }
@@ -59,16 +59,16 @@ message GetProfileRequest {
 message GetProfileResponse {
   // Success indicates if the profile was successfully retrieved
   bool success = 1;
-  
+
   // Error message if the operation failed
   string error_message = 2;
-  
+
   // Error code for programmatic error handling
   ErrorCode error_code = 3;
-  
+
   // ApplicationProfile is populated when kind is "applicationProfile"
   github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfile application_profile = 4;
-  
+
   // NetworkNeighborhood is populated when kind is "networkNeighborhood"
   github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhood network_neighborhood = 5;
 }
@@ -90,19 +90,25 @@ enum ErrorCode {
 message ListApplicationProfilesRequest {
   // Namespace to list profiles from
   string namespace = 1;
+
+  // Limit number of items to return (0 means server default)
+  int64 limit = 4;
+
+  // Continue token for pagination
+  string cont = 5;
 }
 
 // ListApplicationProfilesResponse contains the list of ApplicationProfiles (with nil Spec)
 message ListApplicationProfilesResponse {
   // Success indicates if the list was successfully retrieved
   bool success = 1;
-  
+
   // Error message if the operation failed
   string error_message = 2;
-  
+
   // Error code for programmatic error handling
   ErrorCode error_code = 3;
-  
+
   // ApplicationProfiles list (Spec will be nil for each item)
   repeated github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfile application_profiles = 4;
 }
@@ -112,19 +118,25 @@ message ListApplicationProfilesResponse {
 message ListNetworkNeighborhoodsRequest {
   // Namespace to list neighborhoods from
   string namespace = 1;
+
+  // Limit number of items to return (0 means server default)
+  int64 limit = 4;
+
+  // Continue token for pagination
+  string cont = 5;
 }
 
 // ListNetworkNeighborhoodsResponse contains the list of NetworkNeighborhoods (with nil Spec)
 message ListNetworkNeighborhoodsResponse {
   // Success indicates if the list was successfully retrieved
   bool success = 1;
-  
+
   // Error message if the operation failed
   string error_message = 2;
-  
+
   // Error code for programmatic error handling
   ErrorCode error_code = 3;
-  
+
   // NetworkNeighborhoods list (Spec will be nil for each item)
   repeated github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhood network_neighborhoods = 4;
 }

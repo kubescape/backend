@@ -324,13 +324,15 @@ func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, n
 }
 
 // ListApplicationProfiles lists all ApplicationProfiles in a namespace (returns metadata only, nil Spec)
-func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace string) (*v1beta1.ApplicationProfileList, error) {
+func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace string, limit int64, cont string) (*v1beta1.ApplicationProfileList, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
 	}
 
 	req := &proto.ListApplicationProfilesRequest{
 		Namespace: namespace,
+		Limit:     limit,
+		Cont:      cont,
 	}
 
 	ctx = c.withMetadata(ctx)
@@ -366,13 +368,15 @@ func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace s
 }
 
 // ListNetworkNeighborhoods lists all NetworkNeighborhoods in a namespace (returns metadata only, nil Spec)
-func (c *StorageClient) ListNetworkNeighborhoods(ctx context.Context, namespace string) (*v1beta1.NetworkNeighborhoodList, error) {
+func (c *StorageClient) ListNetworkNeighborhoods(ctx context.Context, namespace string, limit int64, cont string) (*v1beta1.NetworkNeighborhoodList, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
 	}
 
 	req := &proto.ListNetworkNeighborhoodsRequest{
 		Namespace: namespace,
+		Limit:     limit,
+		Cont:      cont,
 	}
 
 	ctx = c.withMetadata(ctx)

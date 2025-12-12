@@ -350,7 +350,11 @@ func (x *GetProfileResponse) GetNetworkNeighborhood() *v1beta1.NetworkNeighborho
 type ListApplicationProfilesRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Namespace to list profiles from
-	Namespace     string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// Limit number of items to return (0 means server default)
+	Limit int64 `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Continue token for pagination
+	Cont          string `protobuf:"bytes,5,opt,name=cont,proto3" json:"cont,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -388,6 +392,20 @@ func (*ListApplicationProfilesRequest) Descriptor() ([]byte, []int) {
 func (x *ListApplicationProfilesRequest) GetNamespace() string {
 	if x != nil {
 		return x.Namespace
+	}
+	return ""
+}
+
+func (x *ListApplicationProfilesRequest) GetLimit() int64 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListApplicationProfilesRequest) GetCont() string {
+	if x != nil {
+		return x.Cont
 	}
 	return ""
 }
@@ -470,7 +488,11 @@ func (x *ListApplicationProfilesResponse) GetApplicationProfiles() []*v1beta1.Ap
 type ListNetworkNeighborhoodsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Namespace to list neighborhoods from
-	Namespace     string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	// Limit number of items to return (0 means server default)
+	Limit int64 `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Continue token for pagination
+	Cont          string `protobuf:"bytes,5,opt,name=cont,proto3" json:"cont,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -508,6 +530,20 @@ func (*ListNetworkNeighborhoodsRequest) Descriptor() ([]byte, []int) {
 func (x *ListNetworkNeighborhoodsRequest) GetNamespace() string {
 	if x != nil {
 		return x.Namespace
+	}
+	return ""
+}
+
+func (x *ListNetworkNeighborhoodsRequest) GetLimit() int64 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListNetworkNeighborhoodsRequest) GetCont() string {
+	if x != nil {
+		return x.Cont
 	}
 	return ""
 }
@@ -607,17 +643,21 @@ const file_storage_service_proto_rawDesc = "" +
 	"\n" +
 	"error_code\x18\x03 \x01(\x0e2\x1b.storageserver.v1.ErrorCodeR\terrorCode\x12\x86\x01\n" +
 	"\x13application_profile\x18\x04 \x01(\v2U.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfileR\x12applicationProfile\x12\x89\x01\n" +
-	"\x14network_neighborhood\x18\x05 \x01(\v2V.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhoodR\x13networkNeighborhood\">\n" +
+	"\x14network_neighborhood\x18\x05 \x01(\v2V.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhoodR\x13networkNeighborhood\"h\n" +
 	"\x1eListApplicationProfilesRequest\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\"\xa7\x02\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x03R\x05limit\x12\x12\n" +
+	"\x04cont\x18\x05 \x01(\tR\x04cont\"\xa7\x02\n" +
 	"\x1fListApplicationProfilesResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
 	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12:\n" +
 	"\n" +
 	"error_code\x18\x03 \x01(\x0e2\x1b.storageserver.v1.ErrorCodeR\terrorCode\x12\x88\x01\n" +
-	"\x14application_profiles\x18\x04 \x03(\v2U.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfileR\x13applicationProfiles\"?\n" +
+	"\x14application_profiles\x18\x04 \x03(\v2U.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfileR\x13applicationProfiles\"i\n" +
 	"\x1fListNetworkNeighborhoodsRequest\x12\x1c\n" +
-	"\tnamespace\x18\x01 \x01(\tR\tnamespace\"\xab\x02\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x03R\x05limit\x12\x12\n" +
+	"\x04cont\x18\x05 \x01(\tR\x04cont\"\xab\x02\n" +
 	" ListNetworkNeighborhoodsResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
 	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12:\n" +
