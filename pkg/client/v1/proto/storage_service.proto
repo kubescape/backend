@@ -111,6 +111,9 @@ message ListApplicationProfilesResponse {
 
   // ApplicationProfiles list (Spec will be nil for each item)
   repeated github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfile application_profiles = 4;
+
+  // Continue token for next page (empty if no more results)
+  string cont = 5;
 }
 
 // ListNetworkNeighborhoodsRequest requests a list of NetworkNeighborhoods in a namespace
@@ -139,4 +142,7 @@ message ListNetworkNeighborhoodsResponse {
 
   // NetworkNeighborhoods list (Spec will be nil for each item)
   repeated github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhood network_neighborhoods = 4;
+
+  // Continue token for next page (empty if no more results)
+  string cont = 5;
 }

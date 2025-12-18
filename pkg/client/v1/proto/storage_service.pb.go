@@ -421,8 +421,10 @@ type ListApplicationProfilesResponse struct {
 	ErrorCode ErrorCode `protobuf:"varint,3,opt,name=error_code,json=errorCode,proto3,enum=storageserver.v1.ErrorCode" json:"error_code,omitempty"`
 	// ApplicationProfiles list (Spec will be nil for each item)
 	ApplicationProfiles []*v1beta1.ApplicationProfile `protobuf:"bytes,4,rep,name=application_profiles,json=applicationProfiles,proto3" json:"application_profiles,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Continue token for next page (empty if no more results)
+	Cont          string `protobuf:"bytes,5,opt,name=cont,proto3" json:"cont,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListApplicationProfilesResponse) Reset() {
@@ -481,6 +483,13 @@ func (x *ListApplicationProfilesResponse) GetApplicationProfiles() []*v1beta1.Ap
 		return x.ApplicationProfiles
 	}
 	return nil
+}
+
+func (x *ListApplicationProfilesResponse) GetCont() string {
+	if x != nil {
+		return x.Cont
+	}
+	return ""
 }
 
 // ListNetworkNeighborhoodsRequest requests a list of NetworkNeighborhoods in a namespace
@@ -559,8 +568,10 @@ type ListNetworkNeighborhoodsResponse struct {
 	ErrorCode ErrorCode `protobuf:"varint,3,opt,name=error_code,json=errorCode,proto3,enum=storageserver.v1.ErrorCode" json:"error_code,omitempty"`
 	// NetworkNeighborhoods list (Spec will be nil for each item)
 	NetworkNeighborhoods []*v1beta1.NetworkNeighborhood `protobuf:"bytes,4,rep,name=network_neighborhoods,json=networkNeighborhoods,proto3" json:"network_neighborhoods,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Continue token for next page (empty if no more results)
+	Cont          string `protobuf:"bytes,5,opt,name=cont,proto3" json:"cont,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListNetworkNeighborhoodsResponse) Reset() {
@@ -621,6 +632,13 @@ func (x *ListNetworkNeighborhoodsResponse) GetNetworkNeighborhoods() []*v1beta1.
 	return nil
 }
 
+func (x *ListNetworkNeighborhoodsResponse) GetCont() string {
+	if x != nil {
+		return x.Cont
+	}
+	return ""
+}
+
 var File_storage_service_proto protoreflect.FileDescriptor
 
 const file_storage_service_proto_rawDesc = "" +
@@ -647,23 +665,25 @@ const file_storage_service_proto_rawDesc = "" +
 	"\x1eListApplicationProfilesRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x14\n" +
 	"\x05limit\x18\x04 \x01(\x03R\x05limit\x12\x12\n" +
-	"\x04cont\x18\x05 \x01(\tR\x04cont\"\xa7\x02\n" +
+	"\x04cont\x18\x05 \x01(\tR\x04cont\"\xbb\x02\n" +
 	"\x1fListApplicationProfilesResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
 	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12:\n" +
 	"\n" +
 	"error_code\x18\x03 \x01(\x0e2\x1b.storageserver.v1.ErrorCodeR\terrorCode\x12\x88\x01\n" +
-	"\x14application_profiles\x18\x04 \x03(\v2U.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfileR\x13applicationProfiles\"i\n" +
+	"\x14application_profiles\x18\x04 \x03(\v2U.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ApplicationProfileR\x13applicationProfiles\x12\x12\n" +
+	"\x04cont\x18\x05 \x01(\tR\x04cont\"i\n" +
 	"\x1fListNetworkNeighborhoodsRequest\x12\x1c\n" +
 	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x14\n" +
 	"\x05limit\x18\x04 \x01(\x03R\x05limit\x12\x12\n" +
-	"\x04cont\x18\x05 \x01(\tR\x04cont\"\xab\x02\n" +
+	"\x04cont\x18\x05 \x01(\tR\x04cont\"\xbf\x02\n" +
 	" ListNetworkNeighborhoodsResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
 	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12:\n" +
 	"\n" +
 	"error_code\x18\x03 \x01(\x0e2\x1b.storageserver.v1.ErrorCodeR\terrorCode\x12\x8b\x01\n" +
-	"\x15network_neighborhoods\x18\x04 \x03(\v2V.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhoodR\x14networkNeighborhoods*\x86\x02\n" +
+	"\x15network_neighborhoods\x18\x04 \x03(\v2V.github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhoodR\x14networkNeighborhoods\x12\x12\n" +
+	"\x04cont\x18\x05 \x01(\tR\x04cont*\x86\x02\n" +
 	"\tErrorCode\x12\x1a\n" +
 	"\x16ERROR_CODE_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aERROR_CODE_INVALID_REQUEST\x10\x01\x12\x1b\n" +

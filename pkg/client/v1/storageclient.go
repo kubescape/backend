@@ -364,6 +364,11 @@ func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace s
 		Items: items,
 	}
 
+	// Set continue token for Kubernetes-style pagination
+	if resp.Cont != "" {
+		list.Continue = resp.Cont
+	}
+
 	return list, nil
 }
 
@@ -406,6 +411,10 @@ func (c *StorageClient) ListNetworkNeighborhoods(ctx context.Context, namespace 
 
 	list := &v1beta1.NetworkNeighborhoodList{
 		Items: items,
+	}
+
+	if resp.Cont != "" {
+		list.Continue = resp.Cont
 	}
 
 	return list, nil
