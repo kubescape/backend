@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"runtime/debug"
 	"strings"
 
 	"github.com/armosec/utils-go/boolutils"
@@ -26,6 +27,15 @@ const CLIENT_ENV = "KS_CLIENT"
 
 var BuildNumber string
 var Client string
+
+func init() {
+	if BuildNumber == "" {
+		if info, ok := debug.ReadBuildInfo(); ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+			BuildNumber = info.Main.Version
+		}
+	}
+}
+
 var LatestReleaseVersion string
 
 const UnknownBuildNumber = "unknown"
