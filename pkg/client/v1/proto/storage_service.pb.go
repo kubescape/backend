@@ -66,7 +66,7 @@ func (ErrorCode) EnumDescriptor() ([]byte, []int) {
 }
 
 // SendContainerProfileRequest contains the container profile to be stored
-// Note: customer_guid and cluster are sent via gRPC metadata headers
+// customer_guid, cluster, host_type, and host_id are sent via gRPC metadata headers
 type SendContainerProfileRequest struct {
 	// ContainerProfile is the time-series container profile from node agent
 	ContainerProfile     *v1beta1.ContainerProfile `protobuf:"bytes,1,opt,name=container_profile,json=containerProfile,proto3" json:"container_profile,omitempty"`
@@ -165,14 +165,18 @@ func (m *SendContainerProfileResponse) GetErrorCode() ErrorCode {
 }
 
 // GetProfileRequest requests an aggregated profile
-// Note: customer_guid and cluster are sent via gRPC metadata headers
+// customer_guid, cluster, host_type, and host_id are sent via gRPC metadata headers
 type GetProfileRequest struct {
 	// Kind specifies the type of profile: "applicationProfile" or "networkNeighborhood"
 	Kind string `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
-	// Namespace of the workload
+	// Namespace of the workload (k8s scope identifier)
 	Namespace string `protobuf:"bytes,2,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// Name of the workload
-	Name                 string   `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	// Region of the resource (non-k8s scope identifier, e.g. "us-east-1")
+	Region string `protobuf:"bytes,4,opt,name=region,proto3" json:"region,omitempty"`
+	// AWSAccountID of the resource (non-k8s scope identifier, e.g. "123456789012")
+	AwsAccountId         string   `protobuf:"bytes,5,opt,name=aws_account_id,json=awsAccountId,proto3" json:"aws_account_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -219,6 +223,20 @@ func (m *GetProfileRequest) GetNamespace() string {
 func (m *GetProfileRequest) GetName() string {
 	if m != nil {
 		return m.Name
+	}
+	return ""
+}
+
+func (m *GetProfileRequest) GetRegion() string {
+	if m != nil {
+		return m.Region
+	}
+	return ""
+}
+
+func (m *GetProfileRequest) GetAwsAccountId() string {
+	if m != nil {
+		return m.AwsAccountId
 	}
 	return ""
 }
@@ -300,14 +318,18 @@ func (m *GetProfileResponse) GetNetworkNeighborhood() *v1beta1.NetworkNeighborho
 }
 
 // ListApplicationProfilesRequest requests a list of ApplicationProfiles in a namespace
-// Note: customer_guid and cluster are sent via gRPC metadata headers
+// customer_guid, cluster, host_type, and host_id are sent via gRPC metadata headers
 type ListApplicationProfilesRequest struct {
 	// Namespace to list profiles from
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// Limit number of items to return (0 means server default)
 	Limit int64 `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Continue token for pagination
-	Cont                 string   `protobuf:"bytes,5,opt,name=cont,proto3" json:"cont,omitempty"`
+	Cont string `protobuf:"bytes,5,opt,name=cont,proto3" json:"cont,omitempty"`
+	// Region of the resource (non-k8s scope identifier, e.g. "us-east-1")
+	Region string `protobuf:"bytes,6,opt,name=region,proto3" json:"region,omitempty"`
+	// AWSAccountID of the resource (non-k8s scope identifier, e.g. "123456789012")
+	AwsAccountId         string   `protobuf:"bytes,7,opt,name=aws_account_id,json=awsAccountId,proto3" json:"aws_account_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -354,6 +376,20 @@ func (m *ListApplicationProfilesRequest) GetLimit() int64 {
 func (m *ListApplicationProfilesRequest) GetCont() string {
 	if m != nil {
 		return m.Cont
+	}
+	return ""
+}
+
+func (m *ListApplicationProfilesRequest) GetRegion() string {
+	if m != nil {
+		return m.Region
+	}
+	return ""
+}
+
+func (m *ListApplicationProfilesRequest) GetAwsAccountId() string {
+	if m != nil {
+		return m.AwsAccountId
 	}
 	return ""
 }
@@ -435,14 +471,18 @@ func (m *ListApplicationProfilesResponse) GetCont() string {
 }
 
 // ListNetworkNeighborhoodsRequest requests a list of NetworkNeighborhoods in a namespace
-// Note: customer_guid and cluster are sent via gRPC metadata headers
+// customer_guid, cluster, host_type, and host_id are sent via gRPC metadata headers
 type ListNetworkNeighborhoodsRequest struct {
 	// Namespace to list neighborhoods from
 	Namespace string `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	// Limit number of items to return (0 means server default)
 	Limit int64 `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Continue token for pagination
-	Cont                 string   `protobuf:"bytes,5,opt,name=cont,proto3" json:"cont,omitempty"`
+	Cont string `protobuf:"bytes,5,opt,name=cont,proto3" json:"cont,omitempty"`
+	// Region of the resource (non-k8s scope identifier, e.g. "us-east-1")
+	Region string `protobuf:"bytes,6,opt,name=region,proto3" json:"region,omitempty"`
+	// AWSAccountID of the resource (non-k8s scope identifier, e.g. "123456789012")
+	AwsAccountId         string   `protobuf:"bytes,7,opt,name=aws_account_id,json=awsAccountId,proto3" json:"aws_account_id,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -489,6 +529,20 @@ func (m *ListNetworkNeighborhoodsRequest) GetLimit() int64 {
 func (m *ListNetworkNeighborhoodsRequest) GetCont() string {
 	if m != nil {
 		return m.Cont
+	}
+	return ""
+}
+
+func (m *ListNetworkNeighborhoodsRequest) GetRegion() string {
+	if m != nil {
+		return m.Region
+	}
+	return ""
+}
+
+func (m *ListNetworkNeighborhoodsRequest) GetAwsAccountId() string {
+	if m != nil {
+		return m.AwsAccountId
 	}
 	return ""
 }

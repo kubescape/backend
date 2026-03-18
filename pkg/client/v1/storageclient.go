@@ -37,6 +37,8 @@ type StorageClient struct {
 	accountID   string
 	accessKey   string
 	cluster     string
+	hostType    string
+	hostID      string
 	address     string // host:port format
 	grpcConfig  *GRPCConfig
 	conn        *grpc.ClientConn
@@ -110,8 +112,10 @@ func (c *GRPCConfig) String() string {
 // grpcURL is the full gRPC URL with scheme (e.g., "grpc://storage-server:50051" or "grpcs://storage.example.com:443")
 // accountID is the customer GUID
 // accessKey is the API access token
-// cluster is the cluster name
-func NewStorageClient(grpcURL, accountID, accessKey, cluster string, opts ...StorageClientOption) (*StorageClient, error) {
+// cluster is the cluster name (for cluster-based host types)
+// hostType identifies the host type (e.g. "kubernetes", "ec2", "ecs"); empty defaults to "kubernetes" server-side
+// hostID identifies the specific host (required for non-cluster-based host types)
+func NewStorageClient(grpcURL, accountID, accessKey, cluster, hostType, hostID string, opts ...StorageClientOption) (*StorageClient, error) {
 	if grpcURL == "" {
 		return nil, fmt.Errorf("gRPC URL cannot be empty")
 	}
@@ -127,6 +131,8 @@ func NewStorageClient(grpcURL, accountID, accessKey, cluster string, opts ...Sto
 		accountID:            accountID,
 		accessKey:            accessKey,
 		cluster:              cluster,
+		hostType:             hostType,
+		hostID:               hostID,
 		address:              fmt.Sprintf("%s:%d", config.Host, config.Port),
 		grpcConfig:           config,
 	}
@@ -160,6 +166,8 @@ func (c *StorageClient) refreshMetadata() {
 		backendv1.GrpcAccessKeyHeader, c.accessKey,
 		backendv1.GrpcAccountKey, c.accountID,
 		backendv1.GrpcClusterKey, c.cluster,
+		backendv1.GrpcHostTypeKey, c.hostType,
+		backendv1.GrpcHostIDKey, c.hostID,
 	)
 }
 
@@ -176,6 +184,28 @@ func (c *StorageClient) GetAccessKey() string {
 // GetCluster returns the cluster name
 func (c *StorageClient) GetCluster() string {
 	return c.cluster
+}
+
+// SetHostType sets the host type (e.g. "kubernetes", "ec2", "ecs")
+func (c *StorageClient) SetHostType(value string) {
+	c.hostType = value
+	c.refreshMetadata()
+}
+
+// GetHostType returns the host type
+func (c *StorageClient) GetHostType() string {
+	return c.hostType
+}
+
+// SetHostID sets the host ID (e.g. EC2 instance ID)
+func (c *StorageClient) SetHostID(value string) {
+	c.hostID = value
+	c.refreshMetadata()
+}
+
+// GetHostID returns the host ID
+func (c *StorageClient) GetHostID() string {
+	return c.hostID
 }
 
 // GetAddress returns the storage server address
@@ -260,15 +290,17 @@ func (c *StorageClient) SendContainerProfile(ctx context.Context, profile *v1bet
 }
 
 // GetApplicationProfile retrieves an aggregated ApplicationProfile from the storage server
-func (c *StorageClient) GetApplicationProfile(ctx context.Context, namespace, name string) (*v1beta1.ApplicationProfile, error) {
+func (c *StorageClient) GetApplicationProfile(ctx context.Context, namespace, name, region, awsAccountID string) (*v1beta1.ApplicationProfile, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
 	}
 
 	req := &proto.GetProfileRequest{
-		Kind:      "ApplicationProfile",
-		Namespace: namespace,
-		Name:      name,
+		Kind:         "ApplicationProfile",
+		Namespace:    namespace,
+		Name:         name,
+		Region:       region,
+		AwsAccountId: awsAccountID,
 	}
 
 	ctx = c.withMetadata(ctx)
@@ -292,15 +324,17 @@ func (c *StorageClient) GetApplicationProfile(ctx context.Context, namespace, na
 }
 
 // GetNetworkNeighborhood retrieves an aggregated NetworkNeighborhood from the storage server
-func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, name string) (*v1beta1.NetworkNeighborhood, error) {
+func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, name, region, awsAccountID string) (*v1beta1.NetworkNeighborhood, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
 	}
 
 	req := &proto.GetProfileRequest{
-		Kind:      "NetworkNeighborhood",
-		Namespace: namespace,
-		Name:      name,
+		Kind:         "NetworkNeighborhood",
+		Namespace:    namespace,
+		Name:         name,
+		Region:       region,
+		AwsAccountId: awsAccountID,
 	}
 
 	ctx = c.withMetadata(ctx)
@@ -324,15 +358,17 @@ func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, n
 }
 
 // ListApplicationProfiles lists all ApplicationProfiles in a namespace (returns metadata only, nil Spec)
-func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace string, limit int64, cont string) (*v1beta1.ApplicationProfileList, error) {
+func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace string, limit int64, cont string, region, awsAccountID string) (*v1beta1.ApplicationProfileList, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
 	}
 
 	req := &proto.ListApplicationProfilesRequest{
-		Namespace: namespace,
-		Limit:     limit,
-		Cont:      cont,
+		Namespace:    namespace,
+		Limit:        limit,
+		Cont:         cont,
+		Region:       region,
+		AwsAccountId: awsAccountID,
 	}
 
 	ctx = c.withMetadata(ctx)
@@ -373,15 +409,17 @@ func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace s
 }
 
 // ListNetworkNeighborhoods lists all NetworkNeighborhoods in a namespace (returns metadata only, nil Spec)
-func (c *StorageClient) ListNetworkNeighborhoods(ctx context.Context, namespace string, limit int64, cont string) (*v1beta1.NetworkNeighborhoodList, error) {
+func (c *StorageClient) ListNetworkNeighborhoods(ctx context.Context, namespace string, limit int64, cont string, region, awsAccountID string) (*v1beta1.NetworkNeighborhoodList, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
 	}
 
 	req := &proto.ListNetworkNeighborhoodsRequest{
-		Namespace: namespace,
-		Limit:     limit,
-		Cont:      cont,
+		Namespace:    namespace,
+		Limit:        limit,
+		Cont:         cont,
+		Region:       region,
+		AwsAccountId: awsAccountID,
 	}
 
 	ctx = c.withMetadata(ctx)

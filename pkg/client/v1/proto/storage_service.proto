@@ -24,7 +24,7 @@ service StorageService {
 }
 
 // SendContainerProfileRequest contains the container profile to be stored
-// Note: customer_guid and cluster are sent via gRPC metadata headers
+// customer_guid, cluster, host_type, and host_id are sent via gRPC metadata headers
 message SendContainerProfileRequest {
   // ContainerProfile is the time-series container profile from node agent
   github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ContainerProfile container_profile = 1;
@@ -43,16 +43,22 @@ message SendContainerProfileResponse {
 }
 
 // GetProfileRequest requests an aggregated profile
-// Note: customer_guid and cluster are sent via gRPC metadata headers
+// customer_guid, cluster, host_type, and host_id are sent via gRPC metadata headers
 message GetProfileRequest {
   // Kind specifies the type of profile: "applicationProfile" or "networkNeighborhood"
   string kind = 1;
 
-  // Namespace of the workload
+  // Namespace of the workload (k8s scope identifier)
   string namespace = 2;
 
   // Name of the workload
   string name = 3;
+
+  // Region of the resource (non-k8s scope identifier, e.g. "us-east-1")
+  string region = 4;
+
+  // AWSAccountID of the resource (non-k8s scope identifier, e.g. "123456789012")
+  string aws_account_id = 5;
 }
 
 // GetProfileResponse contains the aggregated profile
@@ -86,7 +92,7 @@ enum ErrorCode {
 }
 
 // ListApplicationProfilesRequest requests a list of ApplicationProfiles in a namespace
-// Note: customer_guid and cluster are sent via gRPC metadata headers
+// customer_guid, cluster, host_type, and host_id are sent via gRPC metadata headers
 message ListApplicationProfilesRequest {
   // Namespace to list profiles from
   string namespace = 1;
@@ -96,6 +102,12 @@ message ListApplicationProfilesRequest {
 
   // Continue token for pagination
   string cont = 5;
+
+  // Region of the resource (non-k8s scope identifier, e.g. "us-east-1")
+  string region = 6;
+
+  // AWSAccountID of the resource (non-k8s scope identifier, e.g. "123456789012")
+  string aws_account_id = 7;
 }
 
 // ListApplicationProfilesResponse contains the list of ApplicationProfiles (with nil Spec)
@@ -117,7 +129,7 @@ message ListApplicationProfilesResponse {
 }
 
 // ListNetworkNeighborhoodsRequest requests a list of NetworkNeighborhoods in a namespace
-// Note: customer_guid and cluster are sent via gRPC metadata headers
+// customer_guid, cluster, host_type, and host_id are sent via gRPC metadata headers
 message ListNetworkNeighborhoodsRequest {
   // Namespace to list neighborhoods from
   string namespace = 1;
@@ -127,6 +139,12 @@ message ListNetworkNeighborhoodsRequest {
 
   // Continue token for pagination
   string cont = 5;
+
+  // Region of the resource (non-k8s scope identifier, e.g. "us-east-1")
+  string region = 6;
+
+  // AWSAccountID of the resource (non-k8s scope identifier, e.g. "123456789012")
+  string aws_account_id = 7;
 }
 
 // ListNetworkNeighborhoodsResponse contains the list of NetworkNeighborhoods (with nil Spec)

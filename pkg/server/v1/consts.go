@@ -42,5 +42,9 @@ const (
 	GrpcAccountKey = "account-id"
 	// GrpcClusterKey is the metadata key for cluster name in gRPC calls
 	GrpcClusterKey = "cluster"
+	// GrpcHostTypeKey is the metadata key for host type in gRPC calls
+	GrpcHostTypeKey = "host-type"
+	// GrpcHostIDKey is the metadata key for host ID in gRPC calls
+	GrpcHostIDKey = "host-id"
 )
 

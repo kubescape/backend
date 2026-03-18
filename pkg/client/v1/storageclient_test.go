@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/armosec/armoapi-go/armotypes"
 	"github.com/kubescape/backend/pkg/client/v1/proto"
 	"github.com/kubescape/storage/pkg/apis/softwarecomposition/v1beta1"
 	"github.com/stretchr/testify/assert"
@@ -55,6 +56,8 @@ func TestNewStorageClient(t *testing.T) {
 		accountID   string
 		accessKey   string
 		cluster     string
+		hostType    string
+		hostID      string
 		expectError bool
 	}{
 		{
@@ -63,6 +66,8 @@ func TestNewStorageClient(t *testing.T) {
 			accountID:   "test-account",
 			accessKey:   "test-key",
 			cluster:     "test-cluster",
+			hostType:    "",
+			hostID:      "",
 			expectError: false,
 		},
 		{
@@ -71,6 +76,8 @@ func TestNewStorageClient(t *testing.T) {
 			accountID:   "test-account",
 			accessKey:   "test-key",
 			cluster:     "test-cluster",
+			hostType:    "",
+			hostID:      "",
 			expectError: false,
 		},
 		{
@@ -79,6 +86,8 @@ func TestNewStorageClient(t *testing.T) {
 			accountID:   "test-account",
 			accessKey:   "test-key",
 			cluster:     "test-cluster",
+			hostType:    "",
+			hostID:      "",
 			expectError: true,
 		},
 		{
@@ -87,13 +96,45 @@ func TestNewStorageClient(t *testing.T) {
 			accountID:   "test-account",
 			accessKey:   "test-key",
 			cluster:     "test-cluster",
+			hostType:    "",
+			hostID:      "",
 			expectError: true,
+		},
+		{
+			name:        "kubernetes host type with cluster",
+			grpcURL:     "grpc://storage.example.com:50051",
+			accountID:   "test-account",
+			accessKey:   "test-key",
+			cluster:     "my-k8s-cluster",
+			hostType:    string(armotypes.HostTypeKubernetes),
+			hostID:      "",
+			expectError: false,
+		},
+		{
+			name:        "ec2 host type with hostID",
+			grpcURL:     "grpc://storage.example.com:50051",
+			accountID:   "test-account",
+			accessKey:   "test-key",
+			cluster:     "",
+			hostType:    string(armotypes.HostTypeEc2),
+			hostID:      "i-0123456789abcdef0",
+			expectError: false,
+		},
+		{
+			name:        "ecs-ec2 host type with hostID",
+			grpcURL:     "grpc://storage.example.com:50051",
+			accountID:   "test-account",
+			accessKey:   "test-key",
+			cluster:     "my-ecs-cluster",
+			hostType:    string(armotypes.HostTypeEcsEc2),
+			hostID:      "",
+			expectError: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, err := NewStorageClient(tt.grpcURL, tt.accountID, tt.accessKey, tt.cluster)
+			client, err := NewStorageClient(tt.grpcURL, tt.accountID, tt.accessKey, tt.cluster, tt.hostType, tt.hostID)
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Nil(t, client)
@@ -103,6 +144,8 @@ func TestNewStorageClient(t *testing.T) {
 				assert.Equal(t, tt.accountID, client.GetAccountID())
 				assert.Equal(t, tt.accessKey, client.GetAccessKey())
 				assert.Equal(t, tt.cluster, client.GetCluster())
+				assert.Equal(t, tt.hostType, client.GetHostType())
+				assert.Equal(t, tt.hostID, client.GetHostID())
 				assert.NotNil(t, client.GetGRPCConfig())
 			}
 		})
@@ -110,12 +153,14 @@ func TestNewStorageClient(t *testing.T) {
 }
 
 func TestStorageClient_SetAccountIDAndAccessKey(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "account1", "key1", "cluster1")
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "account1", "key1", "cluster1", string(armotypes.HostTypeKubernetes), "")
 	require.NoError(t, err)
 
 	assert.Equal(t, "account1", client.GetAccountID())
 	assert.Equal(t, "key1", client.GetAccessKey())
 	assert.Equal(t, "cluster1", client.GetCluster())
+	assert.Equal(t, string(armotypes.HostTypeKubernetes), client.GetHostType())
+	assert.Equal(t, "", client.GetHostID())
 
 	client.SetAccountID("account2")
 	assert.Equal(t, "account2", client.GetAccountID())
@@ -125,10 +170,16 @@ func TestStorageClient_SetAccountIDAndAccessKey(t *testing.T) {
 
 	client.SetCluster("cluster2")
 	assert.Equal(t, "cluster2", client.GetCluster())
+
+	client.SetHostType(string(armotypes.HostTypeEc2))
+	assert.Equal(t, string(armotypes.HostTypeEc2), client.GetHostType())
+
+	client.SetHostID("i-0123456789abcdef0")
+	assert.Equal(t, "i-0123456789abcdef0", client.GetHostID())
 }
 
 func TestStorageClient_SendContainerProfile(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster", string(armotypes.HostTypeKubernetes), "")
 	require.NoError(t, err)
 
 	mockClient := &mockStorageServiceClient{
@@ -146,30 +197,90 @@ func TestStorageClient_SendContainerProfile(t *testing.T) {
 }
 
 func TestStorageClient_GetProfile(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster", "", "")
 	require.NoError(t, err)
 
-	mockClient := &mockStorageServiceClient{
-		getProfileFunc: func(ctx context.Context, in *proto.GetProfileRequest, opts ...grpc.CallOption) (*proto.GetProfileResponse, error) {
-			assert.Equal(t, "ApplicationProfile", in.Kind)
-			assert.Equal(t, "default", in.Namespace)
-			assert.Equal(t, "test-app", in.Name)
-			// customer_guid and cluster are now sent via metadata, not in request
-			return &proto.GetProfileResponse{
-				Success:            true,
-				ApplicationProfile: &v1beta1.ApplicationProfile{},
-			}, nil
+	tests := []struct {
+		name         string
+		kind         armotypes.ProfileKind
+		namespace    string
+		profileName  string
+		region       string
+		awsAccountID string
+	}{
+		{
+			name:         "ApplicationProfile without region and awsAccountID (k8s)",
+			kind:         armotypes.ApplicationProfileKind,
+			namespace:    "default",
+			profileName:  "my-app",
+			region:       "",
+			awsAccountID: "",
+		},
+		{
+			name:         "ApplicationProfile with region and awsAccountID (ECS/EC2)",
+			kind:         armotypes.ApplicationProfileKind,
+			namespace:    "",
+			profileName:  "ecs-task-profile",
+			region:       "us-east-1",
+			awsAccountID: "123456789012",
+		},
+		{
+			name:         "NetworkNeighborhood without region and awsAccountID (k8s)",
+			kind:         armotypes.NetworkNeighborhoodKind,
+			namespace:    "kube-system",
+			profileName:  "core-dns-nn",
+			region:       "",
+			awsAccountID: "",
+		},
+		{
+			name:         "NetworkNeighborhood with region and awsAccountID (ECS/EC2)",
+			kind:         armotypes.NetworkNeighborhoodKind,
+			namespace:    "",
+			profileName:  "ec2-instance-nn",
+			region:       "us-west-2",
+			awsAccountID: "987654321098",
 		},
 	}
-	client.protoClient = mockClient
 
-	resp, err := client.GetApplicationProfile(context.Background(), "default", "test-app")
-	require.NoError(t, err)
-	assert.NotNil(t, resp)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt := tt
+			mockClient := &mockStorageServiceClient{
+				getProfileFunc: func(ctx context.Context, in *proto.GetProfileRequest, opts ...grpc.CallOption) (*proto.GetProfileResponse, error) {
+					assert.Equal(t, string(tt.kind), in.Kind)
+					assert.Equal(t, tt.namespace, in.Namespace)
+					assert.Equal(t, tt.profileName, in.Name)
+					assert.Equal(t, tt.region, in.Region)
+					assert.Equal(t, tt.awsAccountID, in.AwsAccountId)
+					if tt.kind == armotypes.ApplicationProfileKind {
+						return &proto.GetProfileResponse{
+							Success:            true,
+							ApplicationProfile: &v1beta1.ApplicationProfile{},
+						}, nil
+					}
+					return &proto.GetProfileResponse{
+						Success:             true,
+						NetworkNeighborhood: &v1beta1.NetworkNeighborhood{},
+					}, nil
+				},
+			}
+			client.protoClient = mockClient
+
+			if tt.kind == armotypes.ApplicationProfileKind {
+				resp, err := client.GetApplicationProfile(context.Background(), tt.namespace, tt.profileName, tt.region, tt.awsAccountID)
+				require.NoError(t, err)
+				assert.NotNil(t, resp)
+			} else {
+				resp, err := client.GetNetworkNeighborhood(context.Background(), tt.namespace, tt.profileName, tt.region, tt.awsAccountID)
+				require.NoError(t, err)
+				assert.NotNil(t, resp)
+			}
+		})
+	}
 }
 
 func TestStorageClient_NotConnected(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster", string(armotypes.HostTypeKubernetes), "")
 	require.NoError(t, err)
 
 	resp, err := client.SendContainerProfile(context.Background(), &v1beta1.ContainerProfile{})
@@ -179,75 +290,146 @@ func TestStorageClient_NotConnected(t *testing.T) {
 }
 
 func TestStorageClient_ListApplicationProfiles(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster", "", "")
 	require.NoError(t, err)
 
-	mockClient := &mockStorageServiceClient{
-		listApplicationProfilesFunc: func(ctx context.Context, in *proto.ListApplicationProfilesRequest, opts ...grpc.CallOption) (*proto.ListApplicationProfilesResponse, error) {
-			assert.Equal(t, "default", in.Namespace)
-			// customer_guid and cluster are now sent via metadata, not in request
-			assert.Equal(t, int64(10), in.Limit)
-			assert.Equal(t, "next-token", in.Cont)
-			return &proto.ListApplicationProfilesResponse{
-				Success: true,
-				ApplicationProfiles: []*v1beta1.ApplicationProfile{
-					{}, // Spec is nil
-					{}, // Spec is nil
-				},
-			}, nil
+	tests := []struct {
+		name         string
+		namespace    string
+		limit        int64
+		cont         string
+		region       string
+		awsAccountID string
+		expectedLen  int
+	}{
+		{
+			name:         "k8s with namespace, no region/awsAccountID",
+			namespace:    "default",
+			limit:        10,
+			cont:         "next-token",
+			region:       "",
+			awsAccountID: "",
+			expectedLen:  2,
+		},
+		{
+			name:         "ECS/EC2 with region and awsAccountID, empty namespace",
+			namespace:    "",
+			limit:        25,
+			cont:         "cont-token",
+			region:       "us-east-1",
+			awsAccountID: "123456789012",
+			expectedLen:  3,
 		},
 	}
-	client.protoClient = mockClient
 
-	list, err := client.ListApplicationProfiles(context.Background(), "default", 10, "next-token")
-	require.NoError(t, err)
-	assert.NotNil(t, list)
-	assert.Len(t, list.Items, 2)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt := tt
+			mockClient := &mockStorageServiceClient{
+				listApplicationProfilesFunc: func(ctx context.Context, in *proto.ListApplicationProfilesRequest, opts ...grpc.CallOption) (*proto.ListApplicationProfilesResponse, error) {
+					assert.Equal(t, tt.namespace, in.Namespace)
+					assert.Equal(t, tt.limit, in.Limit)
+					assert.Equal(t, tt.cont, in.Cont)
+					assert.Equal(t, tt.region, in.Region)
+					assert.Equal(t, tt.awsAccountID, in.AwsAccountId)
+					profiles := make([]*v1beta1.ApplicationProfile, tt.expectedLen)
+					for i := range profiles {
+						profiles[i] = &v1beta1.ApplicationProfile{}
+					}
+					return &proto.ListApplicationProfilesResponse{
+						Success:             true,
+						ApplicationProfiles: profiles,
+					}, nil
+				},
+			}
+			client.protoClient = mockClient
+
+			list, err := client.ListApplicationProfiles(context.Background(), tt.namespace, tt.limit, tt.cont, tt.region, tt.awsAccountID)
+			require.NoError(t, err)
+			assert.NotNil(t, list)
+			assert.Len(t, list.Items, tt.expectedLen)
+		})
+	}
 }
 
 func TestStorageClient_ListNetworkNeighborhoods(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster", "", "")
 	require.NoError(t, err)
 
-	mockClient := &mockStorageServiceClient{
-		listNetworkNeighborhoodsFunc: func(ctx context.Context, in *proto.ListNetworkNeighborhoodsRequest, opts ...grpc.CallOption) (*proto.ListNetworkNeighborhoodsResponse, error) {
-			assert.Equal(t, "kube-system", in.Namespace)
-			// customer_guid and cluster are now sent via metadata, not in request
-			assert.Equal(t, int64(25), in.Limit)
-			assert.Equal(t, "cont-token", in.Cont)
-			return &proto.ListNetworkNeighborhoodsResponse{
-				Success: true,
-				NetworkNeighborhoods: []*v1beta1.NetworkNeighborhood{
-					{}, // Spec is nil
-					{}, // Spec is nil
-					{}, // Spec is nil
-				},
-			}, nil
+	tests := []struct {
+		name         string
+		namespace    string
+		limit        int64
+		cont         string
+		region       string
+		awsAccountID string
+		expectedLen  int
+	}{
+		{
+			name:         "k8s with namespace, no region/awsAccountID",
+			namespace:    "kube-system",
+			limit:        25,
+			cont:         "cont-token",
+			region:       "",
+			awsAccountID: "",
+			expectedLen:  3,
+		},
+		{
+			name:         "ECS/EC2 with region and awsAccountID, empty namespace",
+			namespace:    "",
+			limit:        50,
+			cont:         "next-page",
+			region:       "us-west-2",
+			awsAccountID: "987654321098",
+			expectedLen:  2,
 		},
 	}
-	client.protoClient = mockClient
 
-	list, err := client.ListNetworkNeighborhoods(context.Background(), "kube-system", 25, "cont-token")
-	require.NoError(t, err)
-	assert.NotNil(t, list)
-	assert.Len(t, list.Items, 3)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt := tt
+			mockClient := &mockStorageServiceClient{
+				listNetworkNeighborhoodsFunc: func(ctx context.Context, in *proto.ListNetworkNeighborhoodsRequest, opts ...grpc.CallOption) (*proto.ListNetworkNeighborhoodsResponse, error) {
+					assert.Equal(t, tt.namespace, in.Namespace)
+					assert.Equal(t, tt.limit, in.Limit)
+					assert.Equal(t, tt.cont, in.Cont)
+					assert.Equal(t, tt.region, in.Region)
+					assert.Equal(t, tt.awsAccountID, in.AwsAccountId)
+					neighborhoods := make([]*v1beta1.NetworkNeighborhood, tt.expectedLen)
+					for i := range neighborhoods {
+						neighborhoods[i] = &v1beta1.NetworkNeighborhood{}
+					}
+					return &proto.ListNetworkNeighborhoodsResponse{
+						Success:              true,
+						NetworkNeighborhoods: neighborhoods,
+					}, nil
+				},
+			}
+			client.protoClient = mockClient
+
+			list, err := client.ListNetworkNeighborhoods(context.Background(), tt.namespace, tt.limit, tt.cont, tt.region, tt.awsAccountID)
+			require.NoError(t, err)
+			assert.NotNil(t, list)
+			assert.Len(t, list.Items, tt.expectedLen)
+		})
+	}
 }
 
 func TestStorageClient_ListApplicationProfiles_NotConnected(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster", "", "")
 	require.NoError(t, err)
 
-	list, err := client.ListApplicationProfiles(context.Background(), "default", 0, "")
+	list, err := client.ListApplicationProfiles(context.Background(), "default", 0, "", "", "")
 	assert.Error(t, err)
 	assert.Nil(t, list)
 	assert.Contains(t, err.Error(), "not connected")
 }
 
 func TestStorageClient_ListNetworkNeighborhoods_NotConnected(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster", "", "")
 	require.NoError(t, err)
 
-	list, err := client.ListNetworkNeighborhoods(context.Background(), "default", 0, "")
+	list, err := client.ListNetworkNeighborhoods(context.Background(), "default", 0, "", "", "")
 	assert.Error(t, err)
 	assert.Nil(t, list)
 	assert.Contains(t, err.Error(), "not connected")

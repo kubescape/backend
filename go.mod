@@ -3,7 +3,7 @@ module github.com/kubescape/backend
 go 1.25.0
 
 require (
-	github.com/armosec/armoapi-go v0.0.666
+	github.com/armosec/armoapi-go v0.0.691-0.20260317094731-9eae5acc97b2
 	github.com/armosec/utils-go v0.0.58
 	github.com/francoispqt/gojay v1.2.13
 	github.com/gogo/protobuf v1.3.2
