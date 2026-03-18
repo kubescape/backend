@@ -134,7 +134,15 @@ func TestNewStorageClient(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			client, err := NewStorageClient(tt.grpcURL, tt.accountID, tt.accessKey, tt.cluster, tt.hostType, tt.hostID)
+			var opts []StorageClientOption
+			if tt.hostType != "" {
+				opts = append(opts, WithHostType(tt.hostType))
+			}
+			if tt.hostID != "" {
+				opts = append(opts, WithHostID(tt.hostID))
+			}
+
+			client, err := NewStorageClient(tt.grpcURL, tt.accountID, tt.accessKey, tt.cluster, opts...)
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Nil(t, client)
@@ -144,8 +152,8 @@ func TestNewStorageClient(t *testing.T) {
 				assert.Equal(t, tt.accountID, client.GetAccountID())
 				assert.Equal(t, tt.accessKey, client.GetAccessKey())
 				assert.Equal(t, tt.cluster, client.GetCluster())
-				assert.Equal(t, tt.hostType, client.GetHostType())
-				assert.Equal(t, tt.hostID, client.GetHostID())
+				assert.Equal(t, tt.hostType, client.hostType)
+				assert.Equal(t, tt.hostID, client.hostID)
 				assert.NotNil(t, client.GetGRPCConfig())
 			}
 		})
@@ -153,14 +161,14 @@ func TestNewStorageClient(t *testing.T) {
 }
 
 func TestStorageClient_SetAccountIDAndAccessKey(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "account1", "key1", "cluster1", string(armotypes.HostTypeKubernetes), "")
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "account1", "key1", "cluster1", WithHostType(string(armotypes.HostTypeKubernetes)))
 	require.NoError(t, err)
 
 	assert.Equal(t, "account1", client.GetAccountID())
 	assert.Equal(t, "key1", client.GetAccessKey())
 	assert.Equal(t, "cluster1", client.GetCluster())
-	assert.Equal(t, string(armotypes.HostTypeKubernetes), client.GetHostType())
-	assert.Equal(t, "", client.GetHostID())
+	assert.Equal(t, string(armotypes.HostTypeKubernetes), client.hostType)
+	assert.Equal(t, "", client.hostID)
 
 	client.SetAccountID("account2")
 	assert.Equal(t, "account2", client.GetAccountID())
@@ -170,21 +178,14 @@ func TestStorageClient_SetAccountIDAndAccessKey(t *testing.T) {
 
 	client.SetCluster("cluster2")
 	assert.Equal(t, "cluster2", client.GetCluster())
-
-	client.SetHostType(string(armotypes.HostTypeEc2))
-	assert.Equal(t, string(armotypes.HostTypeEc2), client.GetHostType())
-
-	client.SetHostID("i-0123456789abcdef0")
-	assert.Equal(t, "i-0123456789abcdef0", client.GetHostID())
 }
 
 func TestStorageClient_SendContainerProfile(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster", string(armotypes.HostTypeKubernetes), "")
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster", WithHostType(string(armotypes.HostTypeKubernetes)))
 	require.NoError(t, err)
 
 	mockClient := &mockStorageServiceClient{
 		sendContainerProfileFunc: func(ctx context.Context, in *proto.SendContainerProfileRequest, opts ...grpc.CallOption) (*proto.SendContainerProfileResponse, error) {
-			// customer_guid and cluster are now sent via metadata, not in request
 			assert.NotNil(t, in.ContainerProfile)
 			return &proto.SendContainerProfileResponse{Success: true}, nil
 		},
@@ -197,7 +198,7 @@ func TestStorageClient_SendContainerProfile(t *testing.T) {
 }
 
 func TestStorageClient_GetProfile(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster", "", "")
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -267,11 +268,11 @@ func TestStorageClient_GetProfile(t *testing.T) {
 			client.protoClient = mockClient
 
 			if tt.kind == armotypes.ApplicationProfileKind {
-				resp, err := client.GetApplicationProfile(context.Background(), tt.namespace, tt.profileName, tt.region, tt.awsAccountID)
+				resp, err := client.GetApplicationProfile(context.Background(), tt.namespace, tt.profileName, WithProfileRegion(tt.region), WithProfileAWSAccountID(tt.awsAccountID))
 				require.NoError(t, err)
 				assert.NotNil(t, resp)
 			} else {
-				resp, err := client.GetNetworkNeighborhood(context.Background(), tt.namespace, tt.profileName, tt.region, tt.awsAccountID)
+				resp, err := client.GetNetworkNeighborhood(context.Background(), tt.namespace, tt.profileName, WithProfileRegion(tt.region), WithProfileAWSAccountID(tt.awsAccountID))
 				require.NoError(t, err)
 				assert.NotNil(t, resp)
 			}
@@ -280,7 +281,7 @@ func TestStorageClient_GetProfile(t *testing.T) {
 }
 
 func TestStorageClient_NotConnected(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster", string(armotypes.HostTypeKubernetes), "")
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster", WithHostType(string(armotypes.HostTypeKubernetes)))
 	require.NoError(t, err)
 
 	resp, err := client.SendContainerProfile(context.Background(), &v1beta1.ContainerProfile{})
@@ -290,7 +291,7 @@ func TestStorageClient_NotConnected(t *testing.T) {
 }
 
 func TestStorageClient_ListApplicationProfiles(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster", "", "")
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -344,7 +345,7 @@ func TestStorageClient_ListApplicationProfiles(t *testing.T) {
 			}
 			client.protoClient = mockClient
 
-			list, err := client.ListApplicationProfiles(context.Background(), tt.namespace, tt.limit, tt.cont, tt.region, tt.awsAccountID)
+			list, err := client.ListApplicationProfiles(context.Background(), tt.namespace, tt.limit, tt.cont, WithProfileRegion(tt.region), WithProfileAWSAccountID(tt.awsAccountID))
 			require.NoError(t, err)
 			assert.NotNil(t, list)
 			assert.Len(t, list.Items, tt.expectedLen)
@@ -353,7 +354,7 @@ func TestStorageClient_ListApplicationProfiles(t *testing.T) {
 }
 
 func TestStorageClient_ListNetworkNeighborhoods(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster", "", "")
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -407,7 +408,7 @@ func TestStorageClient_ListNetworkNeighborhoods(t *testing.T) {
 			}
 			client.protoClient = mockClient
 
-			list, err := client.ListNetworkNeighborhoods(context.Background(), tt.namespace, tt.limit, tt.cont, tt.region, tt.awsAccountID)
+			list, err := client.ListNetworkNeighborhoods(context.Background(), tt.namespace, tt.limit, tt.cont, WithProfileRegion(tt.region), WithProfileAWSAccountID(tt.awsAccountID))
 			require.NoError(t, err)
 			assert.NotNil(t, list)
 			assert.Len(t, list.Items, tt.expectedLen)
@@ -416,20 +417,20 @@ func TestStorageClient_ListNetworkNeighborhoods(t *testing.T) {
 }
 
 func TestStorageClient_ListApplicationProfiles_NotConnected(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster", "", "")
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
 	require.NoError(t, err)
 
-	list, err := client.ListApplicationProfiles(context.Background(), "default", 0, "", "", "")
+	list, err := client.ListApplicationProfiles(context.Background(), "default", 0, "")
 	assert.Error(t, err)
 	assert.Nil(t, list)
 	assert.Contains(t, err.Error(), "not connected")
 }
 
 func TestStorageClient_ListNetworkNeighborhoods_NotConnected(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster", "", "")
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
 	require.NoError(t, err)
 
-	list, err := client.ListNetworkNeighborhoods(context.Background(), "default", 0, "", "", "")
+	list, err := client.ListNetworkNeighborhoods(context.Background(), "default", 0, "")
 	assert.Error(t, err)
 	assert.Nil(t, list)
 	assert.Contains(t, err.Error(), "not connected")
@@ -441,6 +442,8 @@ func TestStorageClientOptions(t *testing.T) {
 		assert.NotNil(t, opts.callTimeout)
 		assert.Equal(t, 30*time.Second, *opts.callTimeout)
 		assert.False(t, opts.withTrace)
+		assert.Empty(t, opts.hostType)
+		assert.Empty(t, opts.hostID)
 	})
 
 	t.Run("with custom timeout", func(t *testing.T) {
@@ -456,6 +459,61 @@ func TestStorageClientOptions(t *testing.T) {
 			WithStorageTrace(true),
 		})
 		assert.True(t, opts.withTrace)
+	})
+
+	t.Run("with host type and host ID", func(t *testing.T) {
+		opts := storageClientOptionsWithDefaults([]StorageClientOption{
+			WithHostType("ecs"),
+			WithHostID("i-0123456789abcdef0"),
+		})
+		assert.Equal(t, "ecs", opts.hostType)
+		assert.Equal(t, "i-0123456789abcdef0", opts.hostID)
+	})
+
+	t.Run("with all options", func(t *testing.T) {
+		opts := storageClientOptionsWithDefaults([]StorageClientOption{
+			WithCallTimeout(45 * time.Second),
+			WithStorageTrace(true),
+			WithHostType("ec2"),
+			WithHostID("i-fedcba9876543210"),
+		})
+		assert.Equal(t, 45*time.Second, *opts.callTimeout)
+		assert.True(t, opts.withTrace)
+		assert.Equal(t, "ec2", opts.hostType)
+		assert.Equal(t, "i-fedcba9876543210", opts.hostID)
+	})
+}
+
+func TestProfileOptions(t *testing.T) {
+	t.Run("default options", func(t *testing.T) {
+		opts := profileOptionsWithDefaults(nil)
+		assert.Empty(t, opts.Region)
+		assert.Empty(t, opts.AWSAccountID)
+	})
+
+	t.Run("with region", func(t *testing.T) {
+		opts := profileOptionsWithDefaults([]ProfileOption{
+			WithProfileRegion("us-east-1"),
+		})
+		assert.Equal(t, "us-east-1", opts.Region)
+		assert.Empty(t, opts.AWSAccountID)
+	})
+
+	t.Run("with AWS account ID", func(t *testing.T) {
+		opts := profileOptionsWithDefaults([]ProfileOption{
+			WithProfileAWSAccountID("123456789012"),
+		})
+		assert.Empty(t, opts.Region)
+		assert.Equal(t, "123456789012", opts.AWSAccountID)
+	})
+
+	t.Run("with both region and AWS account ID", func(t *testing.T) {
+		opts := profileOptionsWithDefaults([]ProfileOption{
+			WithProfileRegion("eu-west-1"),
+			WithProfileAWSAccountID("987654321098"),
+		})
+		assert.Equal(t, "eu-west-1", opts.Region)
+		assert.Equal(t, "987654321098", opts.AWSAccountID)
 	})
 }
 
