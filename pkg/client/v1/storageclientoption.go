@@ -11,6 +11,8 @@ type StorageClientOption func(*StorageClientOptions)
 type StorageClientOptions struct {
 	callTimeout *time.Duration
 	withTrace   bool
+	hostType    string
+	hostID      string
 }
 
 // WithCallTimeout sets the timeout for individual gRPC calls
@@ -30,6 +32,22 @@ func WithStorageTrace(enabled bool) StorageClientOption {
 	}
 }
 
+// WithHostType sets the host type (e.g., "kubernetes", "ec2", "ecs")
+// If not set, defaults to "kubernetes" on the server side
+func WithHostType(hostType string) StorageClientOption {
+	return func(o *StorageClientOptions) {
+		o.hostType = hostType
+	}
+}
+
+// WithHostID sets the host ID (e.g., EC2 instance ID)
+// Required for non-cluster-based host types
+func WithHostID(hostID string) StorageClientOption {
+	return func(o *StorageClientOptions) {
+		o.hostID = hostID
+	}
+}
+
 // storageClientOptionsWithDefaults sets defaults for the Storage client and applies overrides
 func storageClientOptionsWithDefaults(opts []StorageClientOption) *StorageClientOptions {
 	defaultCallTimeout := 30 * time.Second
@@ -37,6 +55,47 @@ func storageClientOptionsWithDefaults(opts []StorageClientOption) *StorageClient
 	options := &StorageClientOptions{
 		callTimeout: &defaultCallTimeout,
 		withTrace:   false,
+		hostType:    "",
+		hostID:      "",
+	}
+
+	for _, apply := range opts {
+		apply(options)
+	}
+
+	return options
+}
+
+// ========== Profile Query Options ==========
+
+// ProfileOption allows to configure profile queries
+type ProfileOption func(*ProfileOptions)
+
+// ProfileOptions holds configuration for profile queries
+type ProfileOptions struct {
+	Region                 string
+	CloudAccountIdentifier string
+}
+
+// WithProfileRegion sets the region for non-k8s scoped resources
+func WithProfileRegion(region string) ProfileOption {
+	return func(o *ProfileOptions) {
+		o.Region = region
+	}
+}
+
+// WithProfileCloudAccountIdentifier sets the cloud account identifier for non-k8s scoped resources (e.g. AWS account ID, GCP project ID)
+func WithProfileCloudAccountIdentifier(cloudAccountIdentifier string) ProfileOption {
+	return func(o *ProfileOptions) {
+		o.CloudAccountIdentifier = cloudAccountIdentifier
+	}
+}
+
+// profileOptionsWithDefaults applies profile query options
+func profileOptionsWithDefaults(opts []ProfileOption) *ProfileOptions {
+	options := &ProfileOptions{
+		Region:                 "",
+		CloudAccountIdentifier: "",
 	}
 
 	for _, apply := range opts {
