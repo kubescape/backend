@@ -3,7 +3,7 @@ module github.com/kubescape/backend
 go 1.25.0
 
 require (
-	github.com/armosec/armoapi-go v0.0.691-0.20260317094731-9eae5acc97b2
+	github.com/armosec/armoapi-go v0.0.691-0.20260319150151-10f97ab56d4a
 	github.com/armosec/utils-go v0.0.58
 	github.com/francoispqt/gojay v1.2.13
 	github.com/gogo/protobuf v1.3.2
@@ -120,7 +120,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
-	github.com/kubescape/k8s-interface v0.0.200 // indirect
+	github.com/kubescape/k8s-interface v0.0.206-0.20260319150457-87bba79f7cda // indirect
 	github.com/kubescape/rbac-utils v0.0.21-0.20230806101615-07e36f555520 // indirect
 	github.com/kubescape/regolibrary v1.0.317-0.20240320124840-1d84ac7186ea // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect

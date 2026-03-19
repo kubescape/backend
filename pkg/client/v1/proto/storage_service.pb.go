@@ -175,11 +175,11 @@ type GetProfileRequest struct {
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	// Region of the resource (non-k8s scope identifier, e.g. "us-east-1")
 	Region string `protobuf:"bytes,4,opt,name=region,proto3" json:"region,omitempty"`
-	// AWSAccountID of the resource (non-k8s scope identifier, e.g. "123456789012")
-	AwsAccountId         string   `protobuf:"bytes,5,opt,name=aws_account_id,json=awsAccountId,proto3" json:"aws_account_id,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	// CloudAccountIdentifier of the resource (non-k8s scope identifier, e.g. AWS account ID, GCP project ID)
+	CloudAccountIdentifier string   `protobuf:"bytes,5,opt,name=cloud_account_identifier,json=cloudAccountIdentifier,proto3" json:"cloud_account_identifier,omitempty"`
+	XXX_NoUnkeyedLiteral   struct{} `json:"-"`
+	XXX_unrecognized       []byte   `json:"-"`
+	XXX_sizecache          int32    `json:"-"`
 }
 
 func (m *GetProfileRequest) Reset()         { *m = GetProfileRequest{} }
@@ -234,9 +234,9 @@ func (m *GetProfileRequest) GetRegion() string {
 	return ""
 }
 
-func (m *GetProfileRequest) GetAwsAccountId() string {
+func (m *GetProfileRequest) GetCloudAccountIdentifier() string {
 	if m != nil {
-		return m.AwsAccountId
+		return m.CloudAccountIdentifier
 	}
 	return ""
 }
@@ -328,11 +328,11 @@ type ListApplicationProfilesRequest struct {
 	Cont string `protobuf:"bytes,5,opt,name=cont,proto3" json:"cont,omitempty"`
 	// Region of the resource (non-k8s scope identifier, e.g. "us-east-1")
 	Region string `protobuf:"bytes,6,opt,name=region,proto3" json:"region,omitempty"`
-	// AWSAccountID of the resource (non-k8s scope identifier, e.g. "123456789012")
-	AwsAccountId         string   `protobuf:"bytes,7,opt,name=aws_account_id,json=awsAccountId,proto3" json:"aws_account_id,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	// CloudAccountIdentifier of the resource (non-k8s scope identifier, e.g. AWS account ID, GCP project ID)
+	CloudAccountIdentifier string   `protobuf:"bytes,7,opt,name=cloud_account_identifier,json=cloudAccountIdentifier,proto3" json:"cloud_account_identifier,omitempty"`
+	XXX_NoUnkeyedLiteral   struct{} `json:"-"`
+	XXX_unrecognized       []byte   `json:"-"`
+	XXX_sizecache          int32    `json:"-"`
 }
 
 func (m *ListApplicationProfilesRequest) Reset()         { *m = ListApplicationProfilesRequest{} }
@@ -387,9 +387,9 @@ func (m *ListApplicationProfilesRequest) GetRegion() string {
 	return ""
 }
 
-func (m *ListApplicationProfilesRequest) GetAwsAccountId() string {
+func (m *ListApplicationProfilesRequest) GetCloudAccountIdentifier() string {
 	if m != nil {
-		return m.AwsAccountId
+		return m.CloudAccountIdentifier
 	}
 	return ""
 }
@@ -481,11 +481,11 @@ type ListNetworkNeighborhoodsRequest struct {
 	Cont string `protobuf:"bytes,5,opt,name=cont,proto3" json:"cont,omitempty"`
 	// Region of the resource (non-k8s scope identifier, e.g. "us-east-1")
 	Region string `protobuf:"bytes,6,opt,name=region,proto3" json:"region,omitempty"`
-	// AWSAccountID of the resource (non-k8s scope identifier, e.g. "123456789012")
-	AwsAccountId         string   `protobuf:"bytes,7,opt,name=aws_account_id,json=awsAccountId,proto3" json:"aws_account_id,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	// CloudAccountIdentifier of the resource (non-k8s scope identifier, e.g. AWS account ID, GCP project ID)
+	CloudAccountIdentifier string   `protobuf:"bytes,7,opt,name=cloud_account_identifier,json=cloudAccountIdentifier,proto3" json:"cloud_account_identifier,omitempty"`
+	XXX_NoUnkeyedLiteral   struct{} `json:"-"`
+	XXX_unrecognized       []byte   `json:"-"`
+	XXX_sizecache          int32    `json:"-"`
 }
 
 func (m *ListNetworkNeighborhoodsRequest) Reset()         { *m = ListNetworkNeighborhoodsRequest{} }
@@ -540,9 +540,9 @@ func (m *ListNetworkNeighborhoodsRequest) GetRegion() string {
 	return ""
 }
 
-func (m *ListNetworkNeighborhoodsRequest) GetAwsAccountId() string {
+func (m *ListNetworkNeighborhoodsRequest) GetCloudAccountIdentifier() string {
 	if m != nil {
-		return m.AwsAccountId
+		return m.CloudAccountIdentifier
 	}
 	return ""
 }

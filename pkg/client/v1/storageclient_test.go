@@ -207,39 +207,39 @@ func TestStorageClient_GetProfile(t *testing.T) {
 		namespace    string
 		profileName  string
 		region       string
-		awsAccountID string
+		cloudAccountIdentifier string
 	}{
 		{
-			name:         "ApplicationProfile without region and awsAccountID (k8s)",
-			kind:         armotypes.ApplicationProfileKind,
-			namespace:    "default",
-			profileName:  "my-app",
-			region:       "",
-			awsAccountID: "",
+			name:                   "ApplicationProfile without region and cloudAccountIdentifier (k8s)",
+			kind:                   armotypes.ApplicationProfileKind,
+			namespace:              "default",
+			profileName:            "my-app",
+			region:                 "",
+			cloudAccountIdentifier: "",
 		},
 		{
-			name:         "ApplicationProfile with region and awsAccountID (ECS/EC2)",
-			kind:         armotypes.ApplicationProfileKind,
-			namespace:    "",
-			profileName:  "ecs-task-profile",
-			region:       "us-east-1",
-			awsAccountID: "123456789012",
+			name:                   "ApplicationProfile with region and cloudAccountIdentifier (ECS/EC2)",
+			kind:                   armotypes.ApplicationProfileKind,
+			namespace:              "",
+			profileName:            "ecs-task-profile",
+			region:                 "us-east-1",
+			cloudAccountIdentifier: "123456789012",
 		},
 		{
-			name:         "NetworkNeighborhood without region and awsAccountID (k8s)",
-			kind:         armotypes.NetworkNeighborhoodKind,
-			namespace:    "kube-system",
-			profileName:  "core-dns-nn",
-			region:       "",
-			awsAccountID: "",
+			name:                   "NetworkNeighborhood without region and cloudAccountIdentifier (k8s)",
+			kind:                   armotypes.NetworkNeighborhoodKind,
+			namespace:              "kube-system",
+			profileName:            "core-dns-nn",
+			region:                 "",
+			cloudAccountIdentifier: "",
 		},
 		{
-			name:         "NetworkNeighborhood with region and awsAccountID (ECS/EC2)",
-			kind:         armotypes.NetworkNeighborhoodKind,
-			namespace:    "",
-			profileName:  "ec2-instance-nn",
-			region:       "us-west-2",
-			awsAccountID: "987654321098",
+			name:                   "NetworkNeighborhood with region and cloudAccountIdentifier (ECS/EC2)",
+			kind:                   armotypes.NetworkNeighborhoodKind,
+			namespace:              "",
+			profileName:            "ec2-instance-nn",
+			region:                 "us-west-2",
+			cloudAccountIdentifier: "987654321098",
 		},
 	}
 
@@ -252,7 +252,7 @@ func TestStorageClient_GetProfile(t *testing.T) {
 					assert.Equal(t, tt.namespace, in.Namespace)
 					assert.Equal(t, tt.profileName, in.Name)
 					assert.Equal(t, tt.region, in.Region)
-					assert.Equal(t, tt.awsAccountID, in.AwsAccountId)
+					assert.Equal(t, tt.cloudAccountIdentifier, in.CloudAccountIdentifier)
 					if tt.kind == armotypes.ApplicationProfileKind {
 						return &proto.GetProfileResponse{
 							Success:            true,
@@ -268,11 +268,11 @@ func TestStorageClient_GetProfile(t *testing.T) {
 			client.protoClient = mockClient
 
 			if tt.kind == armotypes.ApplicationProfileKind {
-				resp, err := client.GetApplicationProfile(context.Background(), tt.namespace, tt.profileName, WithProfileRegion(tt.region), WithProfileAWSAccountID(tt.awsAccountID))
+				resp, err := client.GetApplicationProfile(context.Background(), tt.namespace, tt.profileName, WithProfileRegion(tt.region), WithProfileCloudAccountIdentifier(tt.cloudAccountIdentifier))
 				require.NoError(t, err)
 				assert.NotNil(t, resp)
 			} else {
-				resp, err := client.GetNetworkNeighborhood(context.Background(), tt.namespace, tt.profileName, WithProfileRegion(tt.region), WithProfileAWSAccountID(tt.awsAccountID))
+				resp, err := client.GetNetworkNeighborhood(context.Background(), tt.namespace, tt.profileName, WithProfileRegion(tt.region), WithProfileCloudAccountIdentifier(tt.cloudAccountIdentifier))
 				require.NoError(t, err)
 				assert.NotNil(t, resp)
 			}
@@ -300,26 +300,26 @@ func TestStorageClient_ListApplicationProfiles(t *testing.T) {
 		limit        int64
 		cont         string
 		region       string
-		awsAccountID string
-		expectedLen  int
+		cloudAccountIdentifier string
+		expectedLen            int
 	}{
 		{
-			name:         "k8s with namespace, no region/awsAccountID",
-			namespace:    "default",
-			limit:        10,
-			cont:         "next-token",
-			region:       "",
-			awsAccountID: "",
-			expectedLen:  2,
+			name:                   "k8s with namespace, no region/cloudAccountIdentifier",
+			namespace:              "default",
+			limit:                  10,
+			cont:                   "next-token",
+			region:                 "",
+			cloudAccountIdentifier: "",
+			expectedLen:            2,
 		},
 		{
-			name:         "ECS/EC2 with region and awsAccountID, empty namespace",
-			namespace:    "",
-			limit:        25,
-			cont:         "cont-token",
-			region:       "us-east-1",
-			awsAccountID: "123456789012",
-			expectedLen:  3,
+			name:                   "ECS/EC2 with region and cloudAccountIdentifier, empty namespace",
+			namespace:              "",
+			limit:                  25,
+			cont:                   "cont-token",
+			region:                 "us-east-1",
+			cloudAccountIdentifier: "123456789012",
+			expectedLen:            3,
 		},
 	}
 
@@ -332,7 +332,7 @@ func TestStorageClient_ListApplicationProfiles(t *testing.T) {
 					assert.Equal(t, tt.limit, in.Limit)
 					assert.Equal(t, tt.cont, in.Cont)
 					assert.Equal(t, tt.region, in.Region)
-					assert.Equal(t, tt.awsAccountID, in.AwsAccountId)
+					assert.Equal(t, tt.cloudAccountIdentifier, in.CloudAccountIdentifier)
 					profiles := make([]*v1beta1.ApplicationProfile, tt.expectedLen)
 					for i := range profiles {
 						profiles[i] = &v1beta1.ApplicationProfile{}
@@ -345,7 +345,7 @@ func TestStorageClient_ListApplicationProfiles(t *testing.T) {
 			}
 			client.protoClient = mockClient
 
-			list, err := client.ListApplicationProfiles(context.Background(), tt.namespace, tt.limit, tt.cont, WithProfileRegion(tt.region), WithProfileAWSAccountID(tt.awsAccountID))
+			list, err := client.ListApplicationProfiles(context.Background(), tt.namespace, tt.limit, tt.cont, WithProfileRegion(tt.region), WithProfileCloudAccountIdentifier(tt.cloudAccountIdentifier))
 			require.NoError(t, err)
 			assert.NotNil(t, list)
 			assert.Len(t, list.Items, tt.expectedLen)
@@ -363,26 +363,26 @@ func TestStorageClient_ListNetworkNeighborhoods(t *testing.T) {
 		limit        int64
 		cont         string
 		region       string
-		awsAccountID string
-		expectedLen  int
+		cloudAccountIdentifier string
+		expectedLen            int
 	}{
 		{
-			name:         "k8s with namespace, no region/awsAccountID",
-			namespace:    "kube-system",
-			limit:        25,
-			cont:         "cont-token",
-			region:       "",
-			awsAccountID: "",
-			expectedLen:  3,
+			name:                   "k8s with namespace, no region/cloudAccountIdentifier",
+			namespace:              "kube-system",
+			limit:                  25,
+			cont:                   "cont-token",
+			region:                 "",
+			cloudAccountIdentifier: "",
+			expectedLen:            3,
 		},
 		{
-			name:         "ECS/EC2 with region and awsAccountID, empty namespace",
-			namespace:    "",
-			limit:        50,
-			cont:         "next-page",
-			region:       "us-west-2",
-			awsAccountID: "987654321098",
-			expectedLen:  2,
+			name:                   "ECS/EC2 with region and cloudAccountIdentifier, empty namespace",
+			namespace:              "",
+			limit:                  50,
+			cont:                   "next-page",
+			region:                 "us-west-2",
+			cloudAccountIdentifier: "987654321098",
+			expectedLen:            2,
 		},
 	}
 
@@ -395,7 +395,7 @@ func TestStorageClient_ListNetworkNeighborhoods(t *testing.T) {
 					assert.Equal(t, tt.limit, in.Limit)
 					assert.Equal(t, tt.cont, in.Cont)
 					assert.Equal(t, tt.region, in.Region)
-					assert.Equal(t, tt.awsAccountID, in.AwsAccountId)
+					assert.Equal(t, tt.cloudAccountIdentifier, in.CloudAccountIdentifier)
 					neighborhoods := make([]*v1beta1.NetworkNeighborhood, tt.expectedLen)
 					for i := range neighborhoods {
 						neighborhoods[i] = &v1beta1.NetworkNeighborhood{}
@@ -408,7 +408,7 @@ func TestStorageClient_ListNetworkNeighborhoods(t *testing.T) {
 			}
 			client.protoClient = mockClient
 
-			list, err := client.ListNetworkNeighborhoods(context.Background(), tt.namespace, tt.limit, tt.cont, WithProfileRegion(tt.region), WithProfileAWSAccountID(tt.awsAccountID))
+			list, err := client.ListNetworkNeighborhoods(context.Background(), tt.namespace, tt.limit, tt.cont, WithProfileRegion(tt.region), WithProfileCloudAccountIdentifier(tt.cloudAccountIdentifier))
 			require.NoError(t, err)
 			assert.NotNil(t, list)
 			assert.Len(t, list.Items, tt.expectedLen)
@@ -488,7 +488,7 @@ func TestProfileOptions(t *testing.T) {
 	t.Run("default options", func(t *testing.T) {
 		opts := profileOptionsWithDefaults(nil)
 		assert.Empty(t, opts.Region)
-		assert.Empty(t, opts.AWSAccountID)
+		assert.Empty(t, opts.CloudAccountIdentifier)
 	})
 
 	t.Run("with region", func(t *testing.T) {
@@ -496,24 +496,24 @@ func TestProfileOptions(t *testing.T) {
 			WithProfileRegion("us-east-1"),
 		})
 		assert.Equal(t, "us-east-1", opts.Region)
-		assert.Empty(t, opts.AWSAccountID)
+		assert.Empty(t, opts.CloudAccountIdentifier)
 	})
 
-	t.Run("with AWS account ID", func(t *testing.T) {
+	t.Run("with cloud account identifier", func(t *testing.T) {
 		opts := profileOptionsWithDefaults([]ProfileOption{
-			WithProfileAWSAccountID("123456789012"),
+			WithProfileCloudAccountIdentifier("123456789012"),
 		})
 		assert.Empty(t, opts.Region)
-		assert.Equal(t, "123456789012", opts.AWSAccountID)
+		assert.Equal(t, "123456789012", opts.CloudAccountIdentifier)
 	})
 
-	t.Run("with both region and AWS account ID", func(t *testing.T) {
+	t.Run("with both region and cloud account identifier", func(t *testing.T) {
 		opts := profileOptionsWithDefaults([]ProfileOption{
 			WithProfileRegion("eu-west-1"),
-			WithProfileAWSAccountID("987654321098"),
+			WithProfileCloudAccountIdentifier("987654321098"),
 		})
 		assert.Equal(t, "eu-west-1", opts.Region)
-		assert.Equal(t, "987654321098", opts.AWSAccountID)
+		assert.Equal(t, "987654321098", opts.CloudAccountIdentifier)
 	})
 }
 

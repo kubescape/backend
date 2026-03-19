@@ -263,9 +263,9 @@ func (c *StorageClient) SendContainerProfile(ctx context.Context, profile *v1bet
 }
 
 // GetApplicationProfile retrieves an aggregated ApplicationProfile from the storage server
-// For backward compatibility, region and awsAccountID can be provided via ProfileOption
+// For backward compatibility, region and cloudAccountIdentifier can be provided via ProfileOption
 // Old way: GetApplicationProfile(ctx, "ns", "name")
-// New way: GetApplicationProfile(ctx, "ns", "name", WithProfileRegion("us-east-1"), WithProfileAWSAccountID("123"))
+// New way: GetApplicationProfile(ctx, "ns", "name", WithProfileRegion("us-east-1"), WithProfileCloudAccountIdentifier("123"))
 func (c *StorageClient) GetApplicationProfile(ctx context.Context, namespace, name string, opts ...ProfileOption) (*v1beta1.ApplicationProfile, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
@@ -274,11 +274,11 @@ func (c *StorageClient) GetApplicationProfile(ctx context.Context, namespace, na
 	profileOpts := profileOptionsWithDefaults(opts)
 
 	req := &proto.GetProfileRequest{
-		Kind:         "ApplicationProfile",
-		Namespace:    namespace,
-		Name:         name,
-		Region:       profileOpts.Region,
-		AwsAccountId: profileOpts.AWSAccountID,
+		Kind:                   "ApplicationProfile",
+		Namespace:              namespace,
+		Name:                   name,
+		Region:                 profileOpts.Region,
+		CloudAccountIdentifier: profileOpts.CloudAccountIdentifier,
 	}
 
 	ctx = c.withMetadata(ctx)
@@ -302,9 +302,9 @@ func (c *StorageClient) GetApplicationProfile(ctx context.Context, namespace, na
 }
 
 // GetNetworkNeighborhood retrieves an aggregated NetworkNeighborhood from the storage server
-// For backward compatibility, region and awsAccountID can be provided via ProfileOption
+// For backward compatibility, region and cloudAccountIdentifier can be provided via ProfileOption
 // Old way: GetNetworkNeighborhood(ctx, "ns", "name")
-// New way: GetNetworkNeighborhood(ctx, "ns", "name", WithProfileRegion("us-east-1"), WithProfileAWSAccountID("123"))
+// New way: GetNetworkNeighborhood(ctx, "ns", "name", WithProfileRegion("us-east-1"), WithProfileCloudAccountIdentifier("123"))
 func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, name string, opts ...ProfileOption) (*v1beta1.NetworkNeighborhood, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
@@ -313,11 +313,11 @@ func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, n
 	profileOpts := profileOptionsWithDefaults(opts)
 
 	req := &proto.GetProfileRequest{
-		Kind:         "NetworkNeighborhood",
-		Namespace:    namespace,
-		Name:         name,
-		Region:       profileOpts.Region,
-		AwsAccountId: profileOpts.AWSAccountID,
+		Kind:                   "NetworkNeighborhood",
+		Namespace:              namespace,
+		Name:                   name,
+		Region:                 profileOpts.Region,
+		CloudAccountIdentifier: profileOpts.CloudAccountIdentifier,
 	}
 
 	ctx = c.withMetadata(ctx)
@@ -341,9 +341,9 @@ func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, n
 }
 
 // ListApplicationProfiles lists all ApplicationProfiles in a namespace (returns metadata only, nil Spec)
-// For backward compatibility, region and awsAccountID can be provided via ProfileOption
+// For backward compatibility, region and cloudAccountIdentifier can be provided via ProfileOption
 // Old way: ListApplicationProfiles(ctx, "ns", 100, "")
-// New way: ListApplicationProfiles(ctx, "ns", 100, "", WithProfileRegion("us-east-1"), WithProfileAWSAccountID("123"))
+// New way: ListApplicationProfiles(ctx, "ns", 100, "", WithProfileRegion("us-east-1"), WithProfileCloudAccountIdentifier("123"))
 func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace string, limit int64, cont string, opts ...ProfileOption) (*v1beta1.ApplicationProfileList, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
@@ -352,11 +352,11 @@ func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace s
 	profileOpts := profileOptionsWithDefaults(opts)
 
 	req := &proto.ListApplicationProfilesRequest{
-		Namespace:    namespace,
-		Limit:        limit,
-		Cont:         cont,
-		Region:       profileOpts.Region,
-		AwsAccountId: profileOpts.AWSAccountID,
+		Namespace:              namespace,
+		Limit:                  limit,
+		Cont:                   cont,
+		Region:                 profileOpts.Region,
+		CloudAccountIdentifier: profileOpts.CloudAccountIdentifier,
 	}
 
 	ctx = c.withMetadata(ctx)
@@ -397,9 +397,9 @@ func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace s
 }
 
 // ListNetworkNeighborhoods lists all NetworkNeighborhoods in a namespace (returns metadata only, nil Spec)
-// For backward compatibility, region and awsAccountID can be provided via ProfileOption
+// For backward compatibility, region and cloudAccountIdentifier can be provided via ProfileOption
 // Old way: ListNetworkNeighborhoods(ctx, "ns", 100, "")
-// New way: ListNetworkNeighborhoods(ctx, "ns", 100, "", WithProfileRegion("us-east-1"), WithProfileAWSAccountID("123"))
+// New way: ListNetworkNeighborhoods(ctx, "ns", 100, "", WithProfileRegion("us-east-1"), WithProfileCloudAccountIdentifier("123"))
 func (c *StorageClient) ListNetworkNeighborhoods(ctx context.Context, namespace string, limit int64, cont string, opts ...ProfileOption) (*v1beta1.NetworkNeighborhoodList, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
@@ -408,11 +408,11 @@ func (c *StorageClient) ListNetworkNeighborhoods(ctx context.Context, namespace 
 	profileOpts := profileOptionsWithDefaults(opts)
 
 	req := &proto.ListNetworkNeighborhoodsRequest{
-		Namespace:    namespace,
-		Limit:        limit,
-		Cont:         cont,
-		Region:       profileOpts.Region,
-		AwsAccountId: profileOpts.AWSAccountID,
+		Namespace:              namespace,
+		Limit:                  limit,
+		Cont:                   cont,
+		Region:                 profileOpts.Region,
+		CloudAccountIdentifier: profileOpts.CloudAccountIdentifier,
 	}
 
 	ctx = c.withMetadata(ctx)

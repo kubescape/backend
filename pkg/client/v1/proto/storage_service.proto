@@ -57,8 +57,8 @@ message GetProfileRequest {
   // Region of the resource (non-k8s scope identifier, e.g. "us-east-1")
   string region = 4;
 
-  // AWSAccountID of the resource (non-k8s scope identifier, e.g. "123456789012")
-  string aws_account_id = 5;
+  // CloudAccountIdentifier of the resource (non-k8s scope identifier, e.g. AWS account ID "123456789012", GCP project ID)
+  string cloud_account_identifier = 5;
 }
 
 // GetProfileResponse contains the aggregated profile
@@ -106,8 +106,8 @@ message ListApplicationProfilesRequest {
   // Region of the resource (non-k8s scope identifier, e.g. "us-east-1")
   string region = 6;
 
-  // AWSAccountID of the resource (non-k8s scope identifier, e.g. "123456789012")
-  string aws_account_id = 7;
+  // CloudAccountIdentifier of the resource (non-k8s scope identifier, e.g. AWS account ID "123456789012", GCP project ID)
+  string cloud_account_identifier = 7;
 }
 
 // ListApplicationProfilesResponse contains the list of ApplicationProfiles (with nil Spec)
@@ -143,8 +143,8 @@ message ListNetworkNeighborhoodsRequest {
   // Region of the resource (non-k8s scope identifier, e.g. "us-east-1")
   string region = 6;
 
-  // AWSAccountID of the resource (non-k8s scope identifier, e.g. "123456789012")
-  string aws_account_id = 7;
+  // CloudAccountIdentifier of the resource (non-k8s scope identifier, e.g. AWS account ID "123456789012", GCP project ID)
+  string cloud_account_identifier = 7;
 }
 
 // ListNetworkNeighborhoodsResponse contains the list of NetworkNeighborhoods (with nil Spec)

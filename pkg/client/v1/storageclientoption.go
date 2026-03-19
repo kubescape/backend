@@ -73,8 +73,8 @@ type ProfileOption func(*ProfileOptions)
 
 // ProfileOptions holds configuration for profile queries
 type ProfileOptions struct {
-	Region       string
-	AWSAccountID string
+	Region                 string
+	CloudAccountIdentifier string
 }
 
 // WithProfileRegion sets the region for non-k8s scoped resources
@@ -84,18 +84,18 @@ func WithProfileRegion(region string) ProfileOption {
 	}
 }
 
-// WithProfileAWSAccountID sets the AWS account ID for non-k8s scoped resources
-func WithProfileAWSAccountID(accountID string) ProfileOption {
+// WithProfileCloudAccountIdentifier sets the cloud account identifier for non-k8s scoped resources (e.g. AWS account ID, GCP project ID)
+func WithProfileCloudAccountIdentifier(cloudAccountIdentifier string) ProfileOption {
 	return func(o *ProfileOptions) {
-		o.AWSAccountID = accountID
+		o.CloudAccountIdentifier = cloudAccountIdentifier
 	}
 }
 
 // profileOptionsWithDefaults applies profile query options
 func profileOptionsWithDefaults(opts []ProfileOption) *ProfileOptions {
 	options := &ProfileOptions{
-		Region:       "",
-		AWSAccountID: "",
+		Region:                 "",
+		CloudAccountIdentifier: "",
 	}
 
 	for _, apply := range opts {
