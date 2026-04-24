@@ -340,6 +340,42 @@ func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, n
 	return resp.NetworkNeighborhood, nil
 }
 
+// GetContainerProfile retrieves a ContainerProfile from the storage server
+func (c *StorageClient) GetContainerProfile(ctx context.Context, namespace, name string, opts ...ProfileOption) (*v1beta1.ContainerProfile, error) {
+	if c.protoClient == nil {
+		return nil, fmt.Errorf("client is not connected")
+	}
+
+	profileOpts := profileOptionsWithDefaults(opts)
+
+	req := &proto.GetProfileRequest{
+		Kind:                   "ContainerProfile",
+		Namespace:              namespace,
+		Name:                   name,
+		Region:                 profileOpts.Region,
+		CloudAccountIdentifier: profileOpts.CloudAccountIdentifier,
+	}
+
+	ctx = c.withMetadata(ctx)
+
+	if c.callTimeout != nil && *c.callTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, *c.callTimeout)
+		defer cancel()
+	}
+
+	resp, err := c.protoClient.GetProfile(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if !resp.Success {
+		return nil, fmt.Errorf("failed to get container profile: %s (code: %v)", resp.ErrorMessage, resp.ErrorCode)
+	}
+
+	return resp.ContainerProfile, nil
+}
+
 // ListApplicationProfiles lists all ApplicationProfiles in a namespace (returns metadata only, nil Spec)
 // For backward compatibility, region and cloudAccountIdentifier can be provided via ProfileOption
 // Old way: ListApplicationProfiles(ctx, "ns", 100, "")

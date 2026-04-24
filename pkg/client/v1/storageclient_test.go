@@ -241,6 +241,22 @@ func TestStorageClient_GetProfile(t *testing.T) {
 			region:                 "us-west-2",
 			cloudAccountIdentifier: "987654321098",
 		},
+		{
+			name:                   "ContainerProfile k8s",
+			kind:                   armotypes.ContainerProfileKind,
+			namespace:              "default",
+			profileName:            "my-container",
+			region:                 "",
+			cloudAccountIdentifier: "",
+		},
+		{
+			name:                   "ContainerProfile ECS/EC2",
+			kind:                   armotypes.ContainerProfileKind,
+			namespace:              "",
+			profileName:            "ecs-container",
+			region:                 "us-east-1",
+			cloudAccountIdentifier: "123456789012",
+		},
 	}
 
 	for _, tt := range tests {
@@ -253,25 +269,37 @@ func TestStorageClient_GetProfile(t *testing.T) {
 					assert.Equal(t, tt.profileName, in.Name)
 					assert.Equal(t, tt.region, in.Region)
 					assert.Equal(t, tt.cloudAccountIdentifier, in.CloudAccountIdentifier)
-					if tt.kind == armotypes.ApplicationProfileKind {
+					switch tt.kind {
+					case armotypes.ApplicationProfileKind:
 						return &proto.GetProfileResponse{
 							Success:            true,
 							ApplicationProfile: &v1beta1.ApplicationProfile{},
 						}, nil
+					case armotypes.ContainerProfileKind:
+						return &proto.GetProfileResponse{
+							Success:          true,
+							ContainerProfile: &v1beta1.ContainerProfile{},
+						}, nil
+					default:
+						return &proto.GetProfileResponse{
+							Success:             true,
+							NetworkNeighborhood: &v1beta1.NetworkNeighborhood{},
+						}, nil
 					}
-					return &proto.GetProfileResponse{
-						Success:             true,
-						NetworkNeighborhood: &v1beta1.NetworkNeighborhood{},
-					}, nil
 				},
 			}
 			client.protoClient = mockClient
 
-			if tt.kind == armotypes.ApplicationProfileKind {
+			switch tt.kind {
+			case armotypes.ApplicationProfileKind:
 				resp, err := client.GetApplicationProfile(context.Background(), tt.namespace, tt.profileName, WithProfileRegion(tt.region), WithProfileCloudAccountIdentifier(tt.cloudAccountIdentifier))
 				require.NoError(t, err)
 				assert.NotNil(t, resp)
-			} else {
+			case armotypes.ContainerProfileKind:
+				resp, err := client.GetContainerProfile(context.Background(), tt.namespace, tt.profileName, WithProfileRegion(tt.region), WithProfileCloudAccountIdentifier(tt.cloudAccountIdentifier))
+				require.NoError(t, err)
+				assert.NotNil(t, resp)
+			default:
 				resp, err := client.GetNetworkNeighborhood(context.Background(), tt.namespace, tt.profileName, WithProfileRegion(tt.region), WithProfileCloudAccountIdentifier(tt.cloudAccountIdentifier))
 				require.NoError(t, err)
 				assert.NotNil(t, resp)
