@@ -12,8 +12,8 @@ service StorageService {
   // and sends it to Pulsar for processing by the ingester
   rpc SendContainerProfile(SendContainerProfileRequest) returns (SendContainerProfileResponse);
 
-  // GetProfile retrieves an aggregated profile (ApplicationProfile or NetworkNeighborhood)
-  // by fetching container profiles from S3 and aggregating them
+  // GetProfile retrieves an aggregated profile (ApplicationProfile, NetworkNeighborhood,
+  // or ContainerProfile) by fetching them from S3
   rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
 
   // ListApplicationProfiles lists all ApplicationProfiles in a namespace (returns metadata only, nil Spec)
@@ -45,7 +45,7 @@ message SendContainerProfileResponse {
 // GetProfileRequest requests an aggregated profile
 // customer_guid, cluster, host_type, and host_id are sent via gRPC metadata headers
 message GetProfileRequest {
-  // Kind specifies the type of profile: "applicationProfile" or "networkNeighborhood"
+  // Kind specifies the type of profile: "applicationProfile", "networkNeighborhood", or "containerProfile"
   string kind = 1;
 
   // Namespace of the workload (k8s scope identifier)
@@ -77,6 +77,9 @@ message GetProfileResponse {
 
   // NetworkNeighborhood is populated when kind is "networkNeighborhood"
   github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighborhood network_neighborhood = 5;
+
+  // ContainerProfile is populated when kind is "containerProfile"
+  github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ContainerProfile container_profile = 6;
 }
 
 // ErrorCode provides specific error types for programmatic handling
