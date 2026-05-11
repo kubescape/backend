@@ -19,6 +19,27 @@ func TestCheckLatestVersion_Semver_Compare(t *testing.T) {
 
 }
 
+func TestNormalizeVersion(t *testing.T) {
+	assert.Equal(t, "v4.0.6", normalizeVersion("4.0.6"))
+	assert.Equal(t, "v3.0.15", normalizeVersion("v3.0.15"))
+	assert.Equal(t, "", normalizeVersion(""))
+}
+
+func TestSemverCompare_WithNormalization(t *testing.T) {
+	result := semver.Compare(
+		normalizeVersion("4.0.6"),
+		normalizeVersion("v3.0.15"),
+	)
+
+	assert.Equal(t, 1, result)
+}
+
+func TestSemverCompare_WithoutNormalization(t *testing.T) {
+	result := semver.Compare("4.0.6", "v3.0.15")
+
+	assert.Equal(t, -1, result)
+}
+
 func TestCheckLatestVersion(t *testing.T) {
 	type args struct {
 		ctx         context.Context

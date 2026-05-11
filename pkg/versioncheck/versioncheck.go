@@ -194,7 +194,10 @@ func (v *VersionCheckHandler) CheckLatestVersion(ctx context.Context, versionDat
 	LatestReleaseVersion = latestVersion.ClientUpdate
 
 	if latestVersion.ClientUpdate != "" {
-		if BuildNumber != "" && semver.Compare(BuildNumber, LatestReleaseVersion) == -1 {
+		if BuildNumber != "" && semver.Compare(
+			normalizeVersion(BuildNumber),
+			normalizeVersion(LatestReleaseVersion),
+		) == -1 {
 			logger.L().Ctx(ctx).Warning(warningMessage(LatestReleaseVersion))
 		}
 	}
@@ -209,6 +212,13 @@ func (v *VersionCheckHandler) CheckLatestVersion(ctx context.Context, versionDat
 	}
 
 	return nil
+}
+
+func normalizeVersion(v string) string {
+	if v != "" && !strings.HasPrefix(v, "v") {
+		return "v" + v
+	}
+	return v
 }
 
 func (v *VersionCheckHandler) getLatestVersion(versionData *VersionCheckRequest) (*VersionCheckResponse, error) {
