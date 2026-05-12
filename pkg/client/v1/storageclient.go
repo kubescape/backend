@@ -650,10 +650,9 @@ func (c *StorageClient) PutSBOMStream(ctx context.Context, imageDigest, syftVers
 
 	ctx = c.withMetadata(ctx)
 
-	if c.callTimeout != nil && *c.callTimeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, *c.callTimeout)
-		defer cancel()
+// Note: we deliberately do NOT apply callTimeout here, because stream
+// duration depends on payload size / network speed. Callers wanting a
+// timeout should pass a ctx with their own deadline.
 	}
 
 	stream, err := c.protoClient.PutSBOMStream(ctx)
