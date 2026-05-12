@@ -19,10 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	StorageService_SendContainerProfile_FullMethodName     = "/storageserver.v1.StorageService/SendContainerProfile"
-	StorageService_GetProfile_FullMethodName               = "/storageserver.v1.StorageService/GetProfile"
-	StorageService_ListApplicationProfiles_FullMethodName  = "/storageserver.v1.StorageService/ListApplicationProfiles"
-	StorageService_ListNetworkNeighborhoods_FullMethodName = "/storageserver.v1.StorageService/ListNetworkNeighborhoods"
+	StorageService_SendContainerProfile_FullMethodName       = "/storageserver.v1.StorageService/SendContainerProfile"
+	StorageService_GetProfile_FullMethodName                 = "/storageserver.v1.StorageService/GetProfile"
+	StorageService_ListApplicationProfiles_FullMethodName    = "/storageserver.v1.StorageService/ListApplicationProfiles"
+	StorageService_ListNetworkNeighborhoods_FullMethodName   = "/storageserver.v1.StorageService/ListNetworkNeighborhoods"
+	StorageService_SendContainerProfileStream_FullMethodName = "/storageserver.v1.StorageService/SendContainerProfileStream"
+	StorageService_GetContainerProfileStream_FullMethodName  = "/storageserver.v1.StorageService/GetContainerProfileStream"
+	StorageService_PutSBOMStream_FullMethodName              = "/storageserver.v1.StorageService/PutSBOMStream"
+	StorageService_GetSBOMStream_FullMethodName              = "/storageserver.v1.StorageService/GetSBOMStream"
 )
 
 // StorageServiceClient is the client API for StorageService service.
@@ -31,16 +35,65 @@ const (
 //
 // StorageService provides gRPC endpoints for node agent to communicate with backend storage
 type StorageServiceClient interface {
+	// Deprecated: Do not use.
 	// SendContainerProfile receives a container profile (time-series snapshot) from node agent
-	// and sends it to Pulsar for processing by the ingester
+	// and sends it to Pulsar for processing by the ingester.
+	//
+	// Deprecated: use SendContainerProfileStream. The unary form is silently
+	// capped by gRPC's default 4 MiB message limit; container profiles with
+	// many or large entries (or with MaxContainerProfileSize raised) can
+	// exceed this and fail on the wire. The streaming variant has no such
+	// bound.
 	SendContainerProfile(ctx context.Context, in *SendContainerProfileRequest, opts ...grpc.CallOption) (*SendContainerProfileResponse, error)
-	// GetProfile retrieves an aggregated profile (ApplicationProfile or NetworkNeighborhood)
-	// by fetching container profiles from S3 and aggregating them
+	// GetProfile retrieves an aggregated profile (ApplicationProfile, NetworkNeighborhood,
+	// or ContainerProfile) by fetching them from S3.
+	//
+	// Note: for ContainerProfile specifically, prefer GetContainerProfileStream,
+	// which is not subject to the default 4 MiB unary gRPC message limit.
 	GetProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*GetProfileResponse, error)
 	// ListApplicationProfiles lists all ApplicationProfiles in a namespace (returns metadata only, nil Spec)
 	ListApplicationProfiles(ctx context.Context, in *ListApplicationProfilesRequest, opts ...grpc.CallOption) (*ListApplicationProfilesResponse, error)
 	// ListNetworkNeighborhoods lists all NetworkNeighborhoods in a namespace (returns metadata only, nil Spec)
 	ListNetworkNeighborhoods(ctx context.Context, in *ListNetworkNeighborhoodsRequest, opts ...grpc.CallOption) (*ListNetworkNeighborhoodsResponse, error)
+	// SendContainerProfileStream is the streaming replacement for
+	// SendContainerProfile. Client-streaming so the caller need not know the
+	// payload size in advance — required because container profiles with
+	// many or large entries can exceed the default 4 MiB unary gRPC limit.
+	//
+	// The first chunk MUST set metadata (which carries identifying labels
+	// and may be empty otherwise) and MAY include blob_chunk for small
+	// payloads. Subsequent chunks set only blob_chunk. Concatenated
+	// blob_chunk values form the marshaled ContainerProfile proto payload.
+	SendContainerProfileStream(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[ContainerProfileChunk, SendContainerProfileResponse], error)
+	// GetContainerProfileStream is the streaming replacement for
+	// GetProfile(kind=ContainerProfile). Server-streaming so the caller need
+	// not know the response size in advance.
+	//
+	// The first chunk in the response carries metadata + status. When the
+	// profile does not exist or success is false, the server closes the
+	// stream after the metadata chunk. Otherwise subsequent chunks carry
+	// the marshaled ContainerProfile bytes.
+	GetContainerProfileStream(ctx context.Context, in *GetContainerProfileStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GetContainerProfileStreamChunk], error)
+	// PutSBOMStream uploads an SBOM produced for an image. Client-streaming
+	// so the caller need not know the payload size in advance and can stream
+	// bytes from any io.Reader. Idempotent on (customer_guid, image_digest,
+	// syft_version) — duplicate calls upsert the metadata row and overwrite
+	// the S3 blob; end-state is consistent.
+	//
+	// The first chunk MUST set metadata (image_digest, syft_version, source)
+	// and MAY include blob_chunk for small payloads. Subsequent chunks set
+	// only blob_chunk. Concatenated blob_chunk values form the marshaled
+	// SBOMSyft proto payload.
+	PutSBOMStream(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[PutSBOMChunk, PutSBOMResponse], error)
+	// GetSBOMStream probes for or fetches an SBOM by (customer_guid,
+	// image_digest, syft_version). Server-streaming so the caller need not
+	// know the response size in advance.
+	//
+	// The first chunk in the response carries metadata + status. When the
+	// request sets metadata_only=true OR the row does not exist OR success
+	// is false, the server closes the stream after the metadata chunk.
+	// Otherwise subsequent chunks carry the marshaled SBOMSyft bytes.
+	GetSBOMStream(ctx context.Context, in *GetSBOMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GetSBOMChunk], error)
 }
 
 type storageServiceClient struct {
@@ -51,6 +104,7 @@ func NewStorageServiceClient(cc grpc.ClientConnInterface) StorageServiceClient {
 	return &storageServiceClient{cc}
 }
 
+// Deprecated: Do not use.
 func (c *storageServiceClient) SendContainerProfile(ctx context.Context, in *SendContainerProfileRequest, opts ...grpc.CallOption) (*SendContainerProfileResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SendContainerProfileResponse)
@@ -91,22 +145,135 @@ func (c *storageServiceClient) ListNetworkNeighborhoods(ctx context.Context, in 
 	return out, nil
 }
 
+func (c *storageServiceClient) SendContainerProfileStream(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[ContainerProfileChunk, SendContainerProfileResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &StorageService_ServiceDesc.Streams[0], StorageService_SendContainerProfileStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[ContainerProfileChunk, SendContainerProfileResponse]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type StorageService_SendContainerProfileStreamClient = grpc.ClientStreamingClient[ContainerProfileChunk, SendContainerProfileResponse]
+
+func (c *storageServiceClient) GetContainerProfileStream(ctx context.Context, in *GetContainerProfileStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GetContainerProfileStreamChunk], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &StorageService_ServiceDesc.Streams[1], StorageService_GetContainerProfileStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[GetContainerProfileStreamRequest, GetContainerProfileStreamChunk]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type StorageService_GetContainerProfileStreamClient = grpc.ServerStreamingClient[GetContainerProfileStreamChunk]
+
+func (c *storageServiceClient) PutSBOMStream(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[PutSBOMChunk, PutSBOMResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &StorageService_ServiceDesc.Streams[2], StorageService_PutSBOMStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[PutSBOMChunk, PutSBOMResponse]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type StorageService_PutSBOMStreamClient = grpc.ClientStreamingClient[PutSBOMChunk, PutSBOMResponse]
+
+func (c *storageServiceClient) GetSBOMStream(ctx context.Context, in *GetSBOMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GetSBOMChunk], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &StorageService_ServiceDesc.Streams[3], StorageService_GetSBOMStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[GetSBOMRequest, GetSBOMChunk]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type StorageService_GetSBOMStreamClient = grpc.ServerStreamingClient[GetSBOMChunk]
+
 // StorageServiceServer is the server API for StorageService service.
 // All implementations must embed UnimplementedStorageServiceServer
 // for forward compatibility.
 //
 // StorageService provides gRPC endpoints for node agent to communicate with backend storage
 type StorageServiceServer interface {
+	// Deprecated: Do not use.
 	// SendContainerProfile receives a container profile (time-series snapshot) from node agent
-	// and sends it to Pulsar for processing by the ingester
+	// and sends it to Pulsar for processing by the ingester.
+	//
+	// Deprecated: use SendContainerProfileStream. The unary form is silently
+	// capped by gRPC's default 4 MiB message limit; container profiles with
+	// many or large entries (or with MaxContainerProfileSize raised) can
+	// exceed this and fail on the wire. The streaming variant has no such
+	// bound.
 	SendContainerProfile(context.Context, *SendContainerProfileRequest) (*SendContainerProfileResponse, error)
-	// GetProfile retrieves an aggregated profile (ApplicationProfile or NetworkNeighborhood)
-	// by fetching container profiles from S3 and aggregating them
+	// GetProfile retrieves an aggregated profile (ApplicationProfile, NetworkNeighborhood,
+	// or ContainerProfile) by fetching them from S3.
+	//
+	// Note: for ContainerProfile specifically, prefer GetContainerProfileStream,
+	// which is not subject to the default 4 MiB unary gRPC message limit.
 	GetProfile(context.Context, *GetProfileRequest) (*GetProfileResponse, error)
 	// ListApplicationProfiles lists all ApplicationProfiles in a namespace (returns metadata only, nil Spec)
 	ListApplicationProfiles(context.Context, *ListApplicationProfilesRequest) (*ListApplicationProfilesResponse, error)
 	// ListNetworkNeighborhoods lists all NetworkNeighborhoods in a namespace (returns metadata only, nil Spec)
 	ListNetworkNeighborhoods(context.Context, *ListNetworkNeighborhoodsRequest) (*ListNetworkNeighborhoodsResponse, error)
+	// SendContainerProfileStream is the streaming replacement for
+	// SendContainerProfile. Client-streaming so the caller need not know the
+	// payload size in advance — required because container profiles with
+	// many or large entries can exceed the default 4 MiB unary gRPC limit.
+	//
+	// The first chunk MUST set metadata (which carries identifying labels
+	// and may be empty otherwise) and MAY include blob_chunk for small
+	// payloads. Subsequent chunks set only blob_chunk. Concatenated
+	// blob_chunk values form the marshaled ContainerProfile proto payload.
+	SendContainerProfileStream(grpc.ClientStreamingServer[ContainerProfileChunk, SendContainerProfileResponse]) error
+	// GetContainerProfileStream is the streaming replacement for
+	// GetProfile(kind=ContainerProfile). Server-streaming so the caller need
+	// not know the response size in advance.
+	//
+	// The first chunk in the response carries metadata + status. When the
+	// profile does not exist or success is false, the server closes the
+	// stream after the metadata chunk. Otherwise subsequent chunks carry
+	// the marshaled ContainerProfile bytes.
+	GetContainerProfileStream(*GetContainerProfileStreamRequest, grpc.ServerStreamingServer[GetContainerProfileStreamChunk]) error
+	// PutSBOMStream uploads an SBOM produced for an image. Client-streaming
+	// so the caller need not know the payload size in advance and can stream
+	// bytes from any io.Reader. Idempotent on (customer_guid, image_digest,
+	// syft_version) — duplicate calls upsert the metadata row and overwrite
+	// the S3 blob; end-state is consistent.
+	//
+	// The first chunk MUST set metadata (image_digest, syft_version, source)
+	// and MAY include blob_chunk for small payloads. Subsequent chunks set
+	// only blob_chunk. Concatenated blob_chunk values form the marshaled
+	// SBOMSyft proto payload.
+	PutSBOMStream(grpc.ClientStreamingServer[PutSBOMChunk, PutSBOMResponse]) error
+	// GetSBOMStream probes for or fetches an SBOM by (customer_guid,
+	// image_digest, syft_version). Server-streaming so the caller need not
+	// know the response size in advance.
+	//
+	// The first chunk in the response carries metadata + status. When the
+	// request sets metadata_only=true OR the row does not exist OR success
+	// is false, the server closes the stream after the metadata chunk.
+	// Otherwise subsequent chunks carry the marshaled SBOMSyft bytes.
+	GetSBOMStream(*GetSBOMRequest, grpc.ServerStreamingServer[GetSBOMChunk]) error
 	mustEmbedUnimplementedStorageServiceServer()
 }
 
@@ -128,6 +295,18 @@ func (UnimplementedStorageServiceServer) ListApplicationProfiles(context.Context
 }
 func (UnimplementedStorageServiceServer) ListNetworkNeighborhoods(context.Context, *ListNetworkNeighborhoodsRequest) (*ListNetworkNeighborhoodsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListNetworkNeighborhoods not implemented")
+}
+func (UnimplementedStorageServiceServer) SendContainerProfileStream(grpc.ClientStreamingServer[ContainerProfileChunk, SendContainerProfileResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method SendContainerProfileStream not implemented")
+}
+func (UnimplementedStorageServiceServer) GetContainerProfileStream(*GetContainerProfileStreamRequest, grpc.ServerStreamingServer[GetContainerProfileStreamChunk]) error {
+	return status.Errorf(codes.Unimplemented, "method GetContainerProfileStream not implemented")
+}
+func (UnimplementedStorageServiceServer) PutSBOMStream(grpc.ClientStreamingServer[PutSBOMChunk, PutSBOMResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method PutSBOMStream not implemented")
+}
+func (UnimplementedStorageServiceServer) GetSBOMStream(*GetSBOMRequest, grpc.ServerStreamingServer[GetSBOMChunk]) error {
+	return status.Errorf(codes.Unimplemented, "method GetSBOMStream not implemented")
 }
 func (UnimplementedStorageServiceServer) mustEmbedUnimplementedStorageServiceServer() {}
 func (UnimplementedStorageServiceServer) testEmbeddedByValue()                        {}
@@ -222,6 +401,42 @@ func _StorageService_ListNetworkNeighborhoods_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _StorageService_SendContainerProfileStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(StorageServiceServer).SendContainerProfileStream(&grpc.GenericServerStream[ContainerProfileChunk, SendContainerProfileResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type StorageService_SendContainerProfileStreamServer = grpc.ClientStreamingServer[ContainerProfileChunk, SendContainerProfileResponse]
+
+func _StorageService_GetContainerProfileStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetContainerProfileStreamRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(StorageServiceServer).GetContainerProfileStream(m, &grpc.GenericServerStream[GetContainerProfileStreamRequest, GetContainerProfileStreamChunk]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type StorageService_GetContainerProfileStreamServer = grpc.ServerStreamingServer[GetContainerProfileStreamChunk]
+
+func _StorageService_PutSBOMStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(StorageServiceServer).PutSBOMStream(&grpc.GenericServerStream[PutSBOMChunk, PutSBOMResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type StorageService_PutSBOMStreamServer = grpc.ClientStreamingServer[PutSBOMChunk, PutSBOMResponse]
+
+func _StorageService_GetSBOMStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetSBOMRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(StorageServiceServer).GetSBOMStream(m, &grpc.GenericServerStream[GetSBOMRequest, GetSBOMChunk]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type StorageService_GetSBOMStreamServer = grpc.ServerStreamingServer[GetSBOMChunk]
+
 // StorageService_ServiceDesc is the grpc.ServiceDesc for StorageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -246,6 +461,27 @@ var StorageService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _StorageService_ListNetworkNeighborhoods_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "SendContainerProfileStream",
+			Handler:       _StorageService_SendContainerProfileStream_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "GetContainerProfileStream",
+			Handler:       _StorageService_GetContainerProfileStream_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "PutSBOMStream",
+			Handler:       _StorageService_PutSBOMStream_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "GetSBOMStream",
+			Handler:       _StorageService_GetSBOMStream_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "storage_service.proto",
 }

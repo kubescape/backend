@@ -1,9 +1,11 @@
 package v1
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net/url"
 	"strconv"
 	"strings"
@@ -16,6 +18,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
+
+// sbomStreamChunkSize is the per-chunk byte budget used by PutSBOMStream
+// and GetSBOMStream. Set well below the default 4 MiB gRPC message limit
+// to leave headroom for framing overhead.
+const sbomStreamChunkSize = 1 << 20 // 1 MiB
 
 // Default gRPC ports
 const (
@@ -241,7 +248,12 @@ func (c *StorageClient) withMetadata(ctx context.Context) context.Context {
 	return metadata.NewOutgoingContext(ctx, c.metadata)
 }
 
-// SendContainerProfile sends a container profile to the storage server
+// SendContainerProfile sends a container profile to the storage server.
+//
+// Deprecated: use SendContainerProfileStream. The unary form is silently
+// capped at gRPC's default 4 MiB message size; profiles with many or
+// large entries can exceed this and fail on the wire. The streaming
+// variant has no such bound.
 func (c *StorageClient) SendContainerProfile(ctx context.Context, profile *v1beta1.ContainerProfile) (*proto.SendContainerProfileResponse, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
@@ -260,6 +272,131 @@ func (c *StorageClient) SendContainerProfile(ctx context.Context, profile *v1bet
 	}
 
 	return c.protoClient.SendContainerProfile(ctx, req)
+}
+
+// SendContainerProfileStream is the streaming replacement for
+// SendContainerProfile. The profile is marshaled and sent to the server
+// in chunks of sbomStreamChunkSize. Use this whenever you might write a
+// large container profile (many entries, long stack traces, long paths).
+func (c *StorageClient) SendContainerProfileStream(ctx context.Context, profile *v1beta1.ContainerProfile) (*proto.SendContainerProfileResponse, error) {
+	if c.protoClient == nil {
+		return nil, fmt.Errorf("client is not connected")
+	}
+	if profile == nil {
+		return nil, fmt.Errorf("profile is nil")
+	}
+
+	payload, err := profile.Marshal()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal ContainerProfile: %w", err)
+	}
+
+	// Note: we deliberately do NOT apply callTimeout here. Stream duration
+	// depends on payload size / network speed; the per-call timeout was
+	// chosen for short unary RPCs. Callers wanting a deadline should pass
+	// a ctx with their own.
+	ctx = c.withMetadata(ctx)
+
+	stream, err := c.protoClient.SendContainerProfileStream(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open SendContainerProfileStream: %w", err)
+	}
+
+	// First chunk MUST set metadata. The metadata message is currently empty
+	// (reserved for future per-call options); identifying fields continue to
+	// be carried via gRPC metadata headers.
+	cut := sbomStreamChunkSize
+	if cut > len(payload) {
+		cut = len(payload)
+	}
+	first := &proto.ContainerProfileChunk{
+		Metadata:  &proto.ContainerProfileChunkMetadata{},
+		BlobChunk: payload[:cut],
+	}
+	if err := stream.Send(first); err != nil {
+		return nil, fmt.Errorf("failed to send first chunk: %w", err)
+	}
+
+	for offset := cut; offset < len(payload); offset += sbomStreamChunkSize {
+		end := offset + sbomStreamChunkSize
+		if end > len(payload) {
+			end = len(payload)
+		}
+		if err := stream.Send(&proto.ContainerProfileChunk{BlobChunk: payload[offset:end]}); err != nil {
+			return nil, fmt.Errorf("failed to send chunk: %w", err)
+		}
+	}
+
+	return stream.CloseAndRecv()
+}
+
+// GetContainerProfileStream is the streaming replacement for the
+// ContainerProfile branch of GetProfile. Use whenever the profile may
+// exceed the default 4 MiB unary gRPC message limit. The chunks are
+// reassembled and the marshaled bytes are unmarshaled internally — the
+// caller receives a typed *v1beta1.ContainerProfile just as with the
+// existing GetContainerProfile wrapper.
+func (c *StorageClient) GetContainerProfileStream(ctx context.Context, namespace, name string, opts ...ProfileOption) (*v1beta1.ContainerProfile, error) {
+	if c.protoClient == nil {
+		return nil, fmt.Errorf("client is not connected")
+	}
+
+	profileOpts := profileOptionsWithDefaults(opts)
+
+	req := &proto.GetContainerProfileStreamRequest{
+		Namespace:              namespace,
+		Name:                   name,
+		Region:                 profileOpts.Region,
+		CloudAccountIdentifier: profileOpts.CloudAccountIdentifier,
+	}
+
+	// Note: we deliberately do NOT apply callTimeout here. Stream duration
+	// depends on payload size / network speed; the per-call timeout was
+	// chosen for short unary RPCs. Callers wanting a deadline should pass
+	// a ctx with their own.
+	ctx = c.withMetadata(ctx)
+
+	stream, err := c.protoClient.GetContainerProfileStream(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open GetContainerProfileStream: %w", err)
+	}
+
+	// First chunk MUST carry metadata.
+	firstChunk, err := stream.Recv()
+	if err != nil {
+		return nil, fmt.Errorf("failed to receive first chunk: %w", err)
+	}
+	md := firstChunk.GetMetadata()
+	if md == nil {
+		return nil, fmt.Errorf("first GetContainerProfileStream chunk missing metadata")
+	}
+	if !md.Success {
+		return nil, fmt.Errorf("failed to get container profile: %s (code: %v)", md.ErrorMessage, md.ErrorCode)
+	}
+	if !md.Exists {
+		return nil, fmt.Errorf("container profile %s/%s not found", namespace, name)
+	}
+
+	var buf []byte
+	if len(firstChunk.BlobChunk) > 0 {
+		buf = append(buf, firstChunk.BlobChunk...)
+	}
+	for {
+		chunk, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to receive chunk: %w", err)
+		}
+		buf = append(buf, chunk.BlobChunk...)
+	}
+
+	profile := &v1beta1.ContainerProfile{}
+	if err := profile.Unmarshal(buf); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal ContainerProfile: %w", err)
+	}
+	return profile, nil
 }
 
 // GetApplicationProfile retrieves an aggregated ApplicationProfile from the storage server
@@ -340,7 +477,12 @@ func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, n
 	return resp.NetworkNeighborhood, nil
 }
 
-// GetContainerProfile retrieves a ContainerProfile from the storage server
+// GetContainerProfile retrieves a ContainerProfile from the storage server.
+//
+// Deprecated: use GetContainerProfileStream. The unary form goes through
+// GetProfile, which is capped at gRPC's default 4 MiB message size;
+// profiles with many or large entries can exceed this and fail on the
+// wire. The streaming variant has no such bound.
 func (c *StorageClient) GetContainerProfile(ctx context.Context, namespace, name string, opts ...ProfileOption) (*v1beta1.ContainerProfile, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
@@ -485,4 +627,211 @@ func (c *StorageClient) ListNetworkNeighborhoods(ctx context.Context, namespace 
 	}
 
 	return list, nil
+}
+
+// PutSBOMStream uploads an SBOM identified by (image_digest, syft_version,
+// source). The payload is the marshaled SBOMSyft proto, read from r and
+// sent to the server in chunks of sbomStreamChunkSize. Callers with a
+// typed *v1beta1.SBOMSyft should use MarshalSBOM to obtain r.
+//
+// The underlying RPC is client-streaming; the caller never needs to know
+// the payload size in advance.
+func (c *StorageClient) PutSBOMStream(ctx context.Context, imageDigest, syftVersion string, source proto.SBOMSource, r io.Reader) (*proto.PutSBOMResponse, error) {
+	if c.protoClient == nil {
+		return nil, fmt.Errorf("client is not connected")
+	}
+	if r == nil {
+		return nil, fmt.Errorf("payload reader is nil")
+	}
+
+	// Note: we deliberately do NOT apply callTimeout here. Stream duration
+	// depends on payload size / network speed; the per-call timeout was
+	// chosen for short unary RPCs. Callers wanting a deadline should pass
+	// a ctx with their own.
+	ctx = c.withMetadata(ctx)
+
+	stream, err := c.protoClient.PutSBOMStream(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open PutSBOMStream: %w", err)
+	}
+
+	// First chunk MUST set metadata, and MAY carry the first slice of bytes.
+	buf := make([]byte, sbomStreamChunkSize)
+	n, readErr := io.ReadFull(r, buf)
+	if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
+		return nil, fmt.Errorf("failed to read payload: %w", readErr)
+	}
+	first := &proto.PutSBOMChunk{
+		Metadata: &proto.PutSBOMChunkMetadata{
+			ImageDigest: imageDigest,
+			SyftVersion: syftVersion,
+			Source:      source,
+		},
+		BlobChunk: buf[:n],
+	}
+	if err := stream.Send(first); err != nil {
+		return nil, fmt.Errorf("failed to send first chunk: %w", err)
+	}
+
+	// Subsequent chunks carry blob bytes only. ReadFull returns
+	// io.ErrUnexpectedEOF on a short final read, which is normal — we send
+	// whatever bytes we got and then stop on the next iteration.
+	for readErr == nil {
+		n, readErr = io.ReadFull(r, buf)
+		if n > 0 {
+			if err := stream.Send(&proto.PutSBOMChunk{BlobChunk: buf[:n]}); err != nil {
+				return nil, fmt.Errorf("failed to send chunk: %w", err)
+			}
+		}
+	}
+	if readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
+		return nil, fmt.Errorf("failed to read payload: %w", readErr)
+	}
+
+	return stream.CloseAndRecv()
+}
+
+// GetSBOMStream probes for or fetches an SBOM by (image_digest, syft_version).
+//
+// Contract:
+//   - Server-reported failure → returns a non-nil error along with the
+//     metadata. Caller's `if err != nil { ... }` is enough; no need to
+//     inspect metadata.Success separately.
+//   - Row does not exist OR metadataOnly is true → returns (md, nil, nil).
+//     Caller consults `md.Exists` to distinguish probe-hit from miss.
+//   - Row exists and metadataOnly is false → returns (md, reader, nil).
+//     The reader streams the marshaled SBOMSyft proto bytes; use
+//     UnmarshalSBOM (or read into your own buffer) to reconstruct the
+//     typed object. The caller MUST Close the reader to release the
+//     underlying gRPC stream.
+//
+// The underlying RPC is server-streaming; the caller never needs to know
+// the response size in advance.
+func (c *StorageClient) GetSBOMStream(ctx context.Context, imageDigest, syftVersion string, metadataOnly bool) (*proto.GetSBOMChunkMetadata, io.ReadCloser, error) {
+	if c.protoClient == nil {
+		return nil, nil, fmt.Errorf("client is not connected")
+	}
+
+	req := &proto.GetSBOMRequest{
+		ImageDigest:  imageDigest,
+		SyftVersion:  syftVersion,
+		MetadataOnly: metadataOnly,
+	}
+
+	ctx = c.withMetadata(ctx)
+
+	// Note: we deliberately do NOT apply callTimeout here, because the
+	// caller drives the read cadence via the returned io.ReadCloser. A
+	// per-call timeout would clip large downloads. Callers wanting a
+	// timeout should pass a ctx with their own deadline.
+	streamCtx, cancel := context.WithCancel(ctx)
+	stream, err := c.protoClient.GetSBOMStream(streamCtx, req)
+	if err != nil {
+		cancel()
+		return nil, nil, fmt.Errorf("failed to open GetSBOMStream: %w", err)
+	}
+
+	// First chunk MUST carry metadata.
+	firstChunk, err := stream.Recv()
+	if err != nil {
+		cancel()
+		return nil, nil, fmt.Errorf("failed to receive first chunk: %w", err)
+	}
+	md := firstChunk.GetMetadata()
+	if md == nil {
+		cancel()
+		return nil, nil, fmt.Errorf("first GetSBOMStream chunk missing metadata")
+	}
+
+	// A server-side failure is a real error — surface it instead of letting
+	// callers misread (md, nil, nil) as a clean miss.
+	if !md.Success {
+		cancel()
+		return md, nil, fmt.Errorf("server reported failure: %s (code: %v)", md.ErrorMessage, md.ErrorCode)
+	}
+
+	// On miss or metadata-only request, the server closes the stream after
+	// the metadata chunk. Drain and return nil reader.
+	if !md.Exists || metadataOnly {
+		cancel()
+		return md, nil, nil
+	}
+
+	reader := &sbomStreamReader{
+		stream:  stream,
+		pending: firstChunk.BlobChunk,
+		cancel:  cancel,
+	}
+	return md, reader, nil
+}
+
+// sbomStreamReader adapts a server-streaming GetSBOM RPC to an
+// io.ReadCloser, lazily fetching the next chunk when the previous one is
+// drained.
+type sbomStreamReader struct {
+	stream  grpc.ServerStreamingClient[proto.GetSBOMChunk]
+	pending []byte // buffer of bytes from the most-recent chunk not yet read
+	cancel  context.CancelFunc
+	err     error // sticky error; once set, Read returns it on every call
+}
+
+func (r *sbomStreamReader) Read(p []byte) (int, error) {
+	if r.err != nil {
+		return 0, r.err
+	}
+	for len(r.pending) == 0 {
+		chunk, err := r.stream.Recv()
+		if err == io.EOF {
+			r.err = io.EOF
+			return 0, io.EOF
+		}
+		if err != nil {
+			r.err = err
+			return 0, err
+		}
+		r.pending = chunk.BlobChunk
+	}
+	n := copy(p, r.pending)
+	r.pending = r.pending[n:]
+	return n, nil
+}
+
+func (r *sbomStreamReader) Close() error {
+	if r.cancel != nil {
+		r.cancel()
+		r.cancel = nil
+	}
+	return nil
+}
+
+// MarshalSBOM marshals a typed SBOMSyft to its proto wire bytes and
+// returns a reader over them, ready for PutSBOM. The full marshaled blob
+// is held in memory; for very large SBOMs callers may prefer to write
+// pre-marshaled bytes to a temp file and pass an *os.File to PutSBOM.
+func MarshalSBOM(sbom *v1beta1.SBOMSyft) (io.Reader, error) {
+	if sbom == nil {
+		return nil, fmt.Errorf("sbom is nil")
+	}
+	b, err := sbom.Marshal()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal SBOMSyft: %w", err)
+	}
+	return bytes.NewReader(b), nil
+}
+
+// UnmarshalSBOM reads marshaled SBOMSyft proto bytes from r and returns
+// the decoded object. It reads r until EOF; it does not Close r.
+func UnmarshalSBOM(r io.Reader) (*v1beta1.SBOMSyft, error) {
+	if r == nil {
+		return nil, fmt.Errorf("reader is nil")
+	}
+	b, err := io.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read SBOM bytes: %w", err)
+	}
+	sbom := &v1beta1.SBOMSyft{}
+	if err := sbom.Unmarshal(b); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal SBOMSyft: %w", err)
+	}
+	return sbom, nil
 }
