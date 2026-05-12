@@ -3,6 +3,9 @@ package v1
 import (
 	"context"
 	"fmt"
+	"io"
+	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,6 +15,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/test/bufconn"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Mock StorageServiceClient for testing
@@ -20,10 +26,8 @@ type mockStorageServiceClient struct {
 	getProfileFunc               func(ctx context.Context, in *proto.GetProfileRequest, opts ...grpc.CallOption) (*proto.GetProfileResponse, error)
 	listApplicationProfilesFunc  func(ctx context.Context, in *proto.ListApplicationProfilesRequest, opts ...grpc.CallOption) (*proto.ListApplicationProfilesResponse, error)
 	listNetworkNeighborhoodsFunc func(ctx context.Context, in *proto.ListNetworkNeighborhoodsRequest, opts ...grpc.CallOption) (*proto.ListNetworkNeighborhoodsResponse, error)
-	putSBOMFunc                  func(ctx context.Context, in *proto.PutSBOMRequest, opts ...grpc.CallOption) (*proto.PutSBOMResponse, error)
-	getSBOMFunc                  func(ctx context.Context, in *proto.GetSBOMRequest, opts ...grpc.CallOption) (*proto.GetSBOMResponse, error)
-	putSBOMStreamFunc            func(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[proto.PutSBOMChunk, proto.PutSBOMResponse], error)
-	getSBOMStreamFunc            func(ctx context.Context, in *proto.GetSBOMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.GetSBOMChunk], error)
+	putSBOMFunc                  func(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[proto.PutSBOMChunk, proto.PutSBOMResponse], error)
+	getSBOMFunc                  func(ctx context.Context, in *proto.GetSBOMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.GetSBOMChunk], error)
 }
 
 func (m *mockStorageServiceClient) SendContainerProfile(ctx context.Context, in *proto.SendContainerProfileRequest, opts ...grpc.CallOption) (*proto.SendContainerProfileResponse, error) {
@@ -54,32 +58,18 @@ func (m *mockStorageServiceClient) ListNetworkNeighborhoods(ctx context.Context,
 	return &proto.ListNetworkNeighborhoodsResponse{Success: true}, nil
 }
 
-func (m *mockStorageServiceClient) PutSBOM(ctx context.Context, in *proto.PutSBOMRequest, opts ...grpc.CallOption) (*proto.PutSBOMResponse, error) {
+func (m *mockStorageServiceClient) PutSBOM(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[proto.PutSBOMChunk, proto.PutSBOMResponse], error) {
 	if m.putSBOMFunc != nil {
-		return m.putSBOMFunc(ctx, in, opts...)
+		return m.putSBOMFunc(ctx, opts...)
 	}
-	return &proto.PutSBOMResponse{Success: true}, nil
+	return nil, fmt.Errorf("PutSBOM not implemented in mock")
 }
 
-func (m *mockStorageServiceClient) GetSBOM(ctx context.Context, in *proto.GetSBOMRequest, opts ...grpc.CallOption) (*proto.GetSBOMResponse, error) {
+func (m *mockStorageServiceClient) GetSBOM(ctx context.Context, in *proto.GetSBOMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.GetSBOMChunk], error) {
 	if m.getSBOMFunc != nil {
 		return m.getSBOMFunc(ctx, in, opts...)
 	}
-	return &proto.GetSBOMResponse{Success: true}, nil
-}
-
-func (m *mockStorageServiceClient) PutSBOMStream(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[proto.PutSBOMChunk, proto.PutSBOMResponse], error) {
-	if m.putSBOMStreamFunc != nil {
-		return m.putSBOMStreamFunc(ctx, opts...)
-	}
-	return nil, fmt.Errorf("PutSBOMStream not implemented in mock")
-}
-
-func (m *mockStorageServiceClient) GetSBOMStream(ctx context.Context, in *proto.GetSBOMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.GetSBOMChunk], error) {
-	if m.getSBOMStreamFunc != nil {
-		return m.getSBOMStreamFunc(ctx, in, opts...)
-	}
-	return nil, fmt.Errorf("GetSBOMStream not implemented in mock")
+	return nil, fmt.Errorf("GetSBOM not implemented in mock")
 }
 
 func TestNewStorageClient(t *testing.T) {
@@ -649,99 +639,307 @@ func TestParseGRPCURL(t *testing.T) {
 	}
 }
 
-func TestStorageClient_PutSBOM(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
+// sbomRoundTripServer is a minimal proto.StorageServiceServer impl that
+// records what PutSBOM receives and serves what GetSBOM should return.
+// It exercises the full marshal/unmarshal path of the streaming RPCs
+// end-to-end through bufconn — catching wire-shape bugs the prior
+// mock-based tests would miss.
+type sbomRoundTripServer struct {
+	proto.UnimplementedStorageServiceServer
+	mu sync.Mutex
+
+	// Received state from the most recent PutSBOM call.
+	receivedMetadata *proto.PutSBOMChunkMetadata
+	receivedBytes    []byte
+
+	// Configured response for GetSBOM. If exists is false the server
+	// closes the stream after the metadata chunk.
+	serveExists       bool
+	serveMetadata     *proto.SBOMMetadata
+	serveBytes        []byte
+	serveChunkSize    int // 0 → send the whole payload in one chunk
+}
+
+func (s *sbomRoundTripServer) PutSBOM(stream grpc.ClientStreamingServer[proto.PutSBOMChunk, proto.PutSBOMResponse]) error {
+	var buf []byte
+	for {
+		chunk, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		s.mu.Lock()
+		if chunk.Metadata != nil && s.receivedMetadata == nil {
+			s.receivedMetadata = chunk.Metadata
+		}
+		s.mu.Unlock()
+		buf = append(buf, chunk.BlobChunk...)
+	}
+	s.mu.Lock()
+	s.receivedBytes = buf
+	s.mu.Unlock()
+	return stream.SendAndClose(&proto.PutSBOMResponse{Success: true})
+}
+
+func (s *sbomRoundTripServer) GetSBOM(req *proto.GetSBOMRequest, stream grpc.ServerStreamingServer[proto.GetSBOMChunk]) error {
+	s.mu.Lock()
+	exists := s.serveExists
+	metadata := s.serveMetadata
+	payload := s.serveBytes
+	chunkSize := s.serveChunkSize
+	s.mu.Unlock()
+
+	// First chunk MUST carry the metadata header.
+	first := &proto.GetSBOMChunk{
+		Metadata: &proto.GetSBOMChunkMetadata{
+			Success:      true,
+			Exists:       exists,
+			SbomMetadata: metadata,
+		},
+	}
+	if err := stream.Send(first); err != nil {
+		return err
+	}
+
+	if !exists || req.MetadataOnly {
+		return nil
+	}
+
+	if chunkSize <= 0 || chunkSize >= len(payload) {
+		return stream.Send(&proto.GetSBOMChunk{BlobChunk: payload})
+	}
+	for offset := 0; offset < len(payload); offset += chunkSize {
+		end := offset + chunkSize
+		if end > len(payload) {
+			end = len(payload)
+		}
+		if err := stream.Send(&proto.GetSBOMChunk{BlobChunk: payload[offset:end]}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// startBufconnSBOMServer starts the round-trip server on an in-memory
+// bufconn listener and returns a client connected to it.
+func startBufconnSBOMServer(t *testing.T) (*sbomRoundTripServer, *StorageClient, func()) {
+	t.Helper()
+	const bufsize = 1024 * 1024
+	lis := bufconn.Listen(bufsize)
+	srv := grpc.NewServer()
+	rtSrv := &sbomRoundTripServer{}
+	proto.RegisterStorageServiceServer(srv, rtSrv)
+	go func() { _ = srv.Serve(lis) }()
+
+	conn, err := grpc.NewClient(
+		"passthrough:///bufnet",
+		grpc.WithContextDialer(func(_ context.Context, _ string) (net.Conn, error) { return lis.Dial() }),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	require.NoError(t, err)
 
+	client, err := NewStorageClient("grpc://example.com:50051", "test-account", "test-key", "test-cluster")
+	require.NoError(t, err)
+	client.conn = conn
+	client.protoClient = proto.NewStorageServiceClient(conn)
+
+	cleanup := func() {
+		_ = conn.Close()
+		srv.Stop()
+	}
+	return rtSrv, client, cleanup
+}
+
+// sampleSBOMSyft constructs a non-trivial SBOMSyft for round-trip tests
+// so the proto Marshal / Unmarshal path actually has fields to round-trip.
+func sampleSBOMSyft() *v1beta1.SBOMSyft {
+	return &v1beta1.SBOMSyft{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "SBOMSyft",
+			APIVersion: "spdx.softwarecomposition.kubescape.io/v1beta1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "sha256-abc123",
+			Namespace: "kubescape",
+			Annotations: map[string]string{
+				"image.name":   "library/nginx:latest",
+				"syft.version": "1.0.0",
+			},
+		},
+		Spec: v1beta1.SBOMSyftSpec{
+			Metadata: v1beta1.SPDXMeta{
+				Tool: v1beta1.ToolMeta{
+					Name:    "syft",
+					Version: "1.0.0",
+				},
+			},
+			Syft: v1beta1.SyftDocument{
+				SyftSource: v1beta1.SyftSource{Type: "image"},
+			},
+		},
+	}
+}
+
+// TestStorageClient_SBOMRoundTrip is the end-to-end marshal/unmarshal test
+// matthyx asked for: it stands up a real gRPC server over bufconn, ships
+// a non-trivial SBOMSyft via the client's PutSBOM, then pulls it back via
+// GetSBOM, and verifies semantic equality at every hop. Covers four
+// shapes:
+//   - Probe (metadata_only=true), exists path
+//   - Probe (metadata_only=true), miss path
+//   - Full fetch, payload fits in one chunk
+//   - Full fetch, payload is split across many small chunks (forces the
+//     reader to drain across multiple Recv calls)
+func TestStorageClient_SBOMRoundTrip(t *testing.T) {
 	const (
 		imageDigest = "abc123def456"
 		syftVersion = "1.0.0"
 	)
+	source := proto.SBOMSource_SBOM_SOURCE_WORKLOAD
 
-	mockClient := &mockStorageServiceClient{
-		putSBOMFunc: func(ctx context.Context, in *proto.PutSBOMRequest, opts ...grpc.CallOption) (*proto.PutSBOMResponse, error) {
-			assert.Equal(t, imageDigest, in.ImageDigest)
-			assert.Equal(t, syftVersion, in.SyftVersion)
-			assert.Equal(t, proto.SBOMSource_SBOM_SOURCE_WORKLOAD, in.Source)
-			assert.NotNil(t, in.Sbom)
-			return &proto.PutSBOMResponse{Success: true}, nil
-		},
-	}
-	client.protoClient = mockClient
+	t.Run("PutSBOM marshals through MarshalSBOM and arrives intact", func(t *testing.T) {
+		rtSrv, client, cleanup := startBufconnSBOMServer(t)
+		defer cleanup()
 
-	resp, err := client.PutSBOM(context.Background(), imageDigest, syftVersion, proto.SBOMSource_SBOM_SOURCE_WORKLOAD, &v1beta1.SBOMSyft{})
-	require.NoError(t, err)
-	assert.True(t, resp.Success)
+		original := sampleSBOMSyft()
+		reader, err := MarshalSBOM(original)
+		require.NoError(t, err)
+
+		resp, err := client.PutSBOM(context.Background(), imageDigest, syftVersion, source, reader)
+		require.NoError(t, err)
+		assert.True(t, resp.Success)
+
+		// Server received the right metadata header.
+		require.NotNil(t, rtSrv.receivedMetadata)
+		assert.Equal(t, imageDigest, rtSrv.receivedMetadata.ImageDigest)
+		assert.Equal(t, syftVersion, rtSrv.receivedMetadata.SyftVersion)
+		assert.Equal(t, source, rtSrv.receivedMetadata.Source)
+
+		// Server-received bytes unmarshal to a SBOMSyft equal to the original.
+		require.NotEmpty(t, rtSrv.receivedBytes)
+		got := &v1beta1.SBOMSyft{}
+		require.NoError(t, got.Unmarshal(rtSrv.receivedBytes))
+		assert.Equal(t, original.Name, got.Name)
+		assert.Equal(t, original.Namespace, got.Namespace)
+		assert.Equal(t, original.Spec.Metadata.Tool.Name, got.Spec.Metadata.Tool.Name)
+		assert.Equal(t, original.Spec.Metadata.Tool.Version, got.Spec.Metadata.Tool.Version)
+		assert.Equal(t, original.Annotations["image.name"], got.Annotations["image.name"])
+	})
+
+	t.Run("GetSBOM metadata-only probe returns only metadata", func(t *testing.T) {
+		rtSrv, client, cleanup := startBufconnSBOMServer(t)
+		defer cleanup()
+
+		rtSrv.serveExists = true
+		rtSrv.serveMetadata = &proto.SBOMMetadata{
+			ImageDigest: imageDigest,
+			SyftVersion: syftVersion,
+		}
+
+		md, reader, err := client.GetSBOM(context.Background(), imageDigest, syftVersion, true)
+		require.NoError(t, err)
+		assert.True(t, md.Success)
+		assert.True(t, md.Exists)
+		require.NotNil(t, md.SbomMetadata)
+		assert.Equal(t, imageDigest, md.SbomMetadata.ImageDigest)
+		assert.Nil(t, reader, "metadata-only probe must not return a reader")
+	})
+
+	t.Run("GetSBOM probe miss returns exists=false and no reader", func(t *testing.T) {
+		rtSrv, client, cleanup := startBufconnSBOMServer(t)
+		defer cleanup()
+
+		rtSrv.serveExists = false
+
+		md, reader, err := client.GetSBOM(context.Background(), imageDigest, syftVersion, true)
+		require.NoError(t, err)
+		assert.True(t, md.Success)
+		assert.False(t, md.Exists)
+		assert.Nil(t, reader)
+	})
+
+	t.Run("GetSBOM full fetch round-trips through UnmarshalSBOM (single chunk)", func(t *testing.T) {
+		rtSrv, client, cleanup := startBufconnSBOMServer(t)
+		defer cleanup()
+
+		original := sampleSBOMSyft()
+		payload, err := original.Marshal()
+		require.NoError(t, err)
+		rtSrv.serveExists = true
+		rtSrv.serveMetadata = &proto.SBOMMetadata{ImageDigest: imageDigest, SyftVersion: syftVersion}
+		rtSrv.serveBytes = payload
+		rtSrv.serveChunkSize = 0 // single chunk
+
+		md, reader, err := client.GetSBOM(context.Background(), imageDigest, syftVersion, false)
+		require.NoError(t, err)
+		require.NotNil(t, reader)
+		defer reader.Close()
+		assert.True(t, md.Exists)
+
+		got, err := UnmarshalSBOM(reader)
+		require.NoError(t, err)
+		assert.Equal(t, original.Name, got.Name)
+		assert.Equal(t, original.Spec.Metadata.Tool.Name, got.Spec.Metadata.Tool.Name)
+	})
+
+	t.Run("GetSBOM full fetch round-trips with payload split across many chunks", func(t *testing.T) {
+		rtSrv, client, cleanup := startBufconnSBOMServer(t)
+		defer cleanup()
+
+		original := sampleSBOMSyft()
+		payload, err := original.Marshal()
+		require.NoError(t, err)
+		rtSrv.serveExists = true
+		rtSrv.serveMetadata = &proto.SBOMMetadata{ImageDigest: imageDigest, SyftVersion: syftVersion}
+		rtSrv.serveBytes = payload
+		// 7-byte chunks force the reader to drain over many Recv calls and
+		// across reads smaller than a chunk — exercises the buffering logic.
+		rtSrv.serveChunkSize = 7
+
+		md, reader, err := client.GetSBOM(context.Background(), imageDigest, syftVersion, false)
+		require.NoError(t, err)
+		require.NotNil(t, reader)
+		defer reader.Close()
+		assert.True(t, md.Exists)
+
+		// Read in 13-byte sips to also stress the partial-Read consumer path.
+		var collected []byte
+		sip := make([]byte, 13)
+		for {
+			n, err := reader.Read(sip)
+			collected = append(collected, sip[:n]...)
+			if err == io.EOF {
+				break
+			}
+			require.NoError(t, err)
+		}
+		assert.Equal(t, payload, collected, "bytes received over many chunks must match the originally marshaled payload")
+
+		got := &v1beta1.SBOMSyft{}
+		require.NoError(t, got.Unmarshal(collected))
+		assert.Equal(t, original.Name, got.Name)
+	})
 }
 
-func TestStorageClient_GetSBOM(t *testing.T) {
-	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
-	require.NoError(t, err)
+// TestStorageClient_PutSBOM_NilReader and the next test cover the trivial
+// argument-validation paths that the bufconn round-trip doesn't exercise.
+func TestStorageClient_PutSBOM_NilReader(t *testing.T) {
+	_, client, cleanup := startBufconnSBOMServer(t)
+	defer cleanup()
 
-	tests := []struct {
-		name         string
-		imageDigest  string
-		syftVersion  string
-		metadataOnly bool
-		exists       bool
-	}{
-		{
-			name:         "metadata-only probe, hit",
-			imageDigest:  "abc123",
-			syftVersion:  "1.0.0",
-			metadataOnly: true,
-			exists:       true,
-		},
-		{
-			name:         "metadata-only probe, miss",
-			imageDigest:  "deadbeef",
-			syftVersion:  "1.0.0",
-			metadataOnly: true,
-			exists:       false,
-		},
-		{
-			name:         "full fetch, hit",
-			imageDigest:  "abc123",
-			syftVersion:  "1.0.0",
-			metadataOnly: false,
-			exists:       true,
-		},
-	}
+	_, err := client.PutSBOM(context.Background(), "abc", "1.0.0", proto.SBOMSource_SBOM_SOURCE_WORKLOAD, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "nil")
+}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			mockClient := &mockStorageServiceClient{
-				getSBOMFunc: func(ctx context.Context, in *proto.GetSBOMRequest, opts ...grpc.CallOption) (*proto.GetSBOMResponse, error) {
-					assert.Equal(t, tc.imageDigest, in.ImageDigest)
-					assert.Equal(t, tc.syftVersion, in.SyftVersion)
-					assert.Equal(t, tc.metadataOnly, in.MetadataOnly)
-					resp := &proto.GetSBOMResponse{Success: true, Exists: tc.exists}
-					if tc.exists {
-						resp.Metadata = &proto.SBOMMetadata{
-							ImageDigest: tc.imageDigest,
-							SyftVersion: tc.syftVersion,
-						}
-						if !tc.metadataOnly {
-							resp.Sbom = &v1beta1.SBOMSyft{}
-						}
-					}
-					return resp, nil
-				},
-			}
-			client.protoClient = mockClient
+func TestMarshalSBOM_NilInput(t *testing.T) {
+	_, err := MarshalSBOM(nil)
+	require.Error(t, err)
+}
 
-			resp, err := client.GetSBOM(context.Background(), tc.imageDigest, tc.syftVersion, tc.metadataOnly)
-			require.NoError(t, err)
-			assert.True(t, resp.Success)
-			assert.Equal(t, tc.exists, resp.Exists)
-			if tc.exists {
-				assert.NotNil(t, resp.Metadata)
-				if tc.metadataOnly {
-					assert.Nil(t, resp.Sbom)
-				} else {
-					assert.NotNil(t, resp.Sbom)
-				}
-			}
-		})
-	}
+func TestUnmarshalSBOM_NilReader(t *testing.T) {
+	_, err := UnmarshalSBOM(nil)
+	require.Error(t, err)
 }

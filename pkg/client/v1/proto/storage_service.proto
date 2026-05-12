@@ -22,30 +22,27 @@ service StorageService {
   // ListNetworkNeighborhoods lists all NetworkNeighborhoods in a namespace (returns metadata only, nil Spec)
   rpc ListNetworkNeighborhoods(ListNetworkNeighborhoodsRequest) returns (ListNetworkNeighborhoodsResponse);
 
-  // PutSBOM uploads an SBOM produced for an image. Idempotent on
-  // (customer_guid, image_digest, syft_version) — duplicate calls upsert the
-  // metadata row and overwrite the S3 blob; end-state is consistent. Used
-  // for SBOM payloads up to the default 4 MiB gRPC message limit.
-  rpc PutSBOM(PutSBOMRequest) returns (PutSBOMResponse);
-
-  // PutSBOMStream uploads an SBOM larger than the default 4 MiB unary gRPC
-  // message limit, chunked client-side. The first chunk in the stream MUST
-  // set metadata (image_digest, syft_version, source); subsequent chunks
-  // set only blob_chunk. Concatenated chunks form the serialized SBOMSyft
-  // proto payload.
-  rpc PutSBOMStream(stream PutSBOMChunk) returns (PutSBOMResponse);
+  // PutSBOM uploads an SBOM produced for an image. Client-streaming so the
+  // caller need not know the payload size in advance and can stream bytes
+  // from any io.Reader. Idempotent on (customer_guid, image_digest,
+  // syft_version) — duplicate calls upsert the metadata row and overwrite
+  // the S3 blob; end-state is consistent.
+  //
+  // The first chunk MUST set metadata (image_digest, syft_version, source)
+  // and MAY include blob_chunk for small payloads. Subsequent chunks set
+  // only blob_chunk. Concatenated blob_chunk values form the marshaled
+  // SBOMSyft proto payload.
+  rpc PutSBOM(stream PutSBOMChunk) returns (PutSBOMResponse);
 
   // GetSBOM probes for or fetches an SBOM by (customer_guid, image_digest,
-  // syft_version). Set metadata_only=true to skip transferring the blob —
-  // used by agents to decide whether to regenerate. Returns the same
-  // envelope (with exists=false) on a miss.
-  rpc GetSBOM(GetSBOMRequest) returns (GetSBOMResponse);
-
-  // GetSBOMStream returns an SBOM larger than the default 4 MiB unary gRPC
-  // message limit, server-streamed. The first chunk sets metadata + status;
-  // subsequent chunks set only blob_chunk. The metadata_only flag on the
-  // request is ignored — GetSBOM (unary) is the metadata-only entry point.
-  rpc GetSBOMStream(GetSBOMRequest) returns (stream GetSBOMChunk);
+  // syft_version). Server-streaming so the caller need not know the
+  // response size in advance.
+  //
+  // The first chunk in the response carries metadata + status. When the
+  // request sets metadata_only=true OR the row does not exist OR success
+  // is false, the server closes the stream after the metadata chunk.
+  // Otherwise subsequent chunks carry the marshaled SBOMSyft bytes.
+  rpc GetSBOM(GetSBOMRequest) returns (stream GetSBOMChunk);
 }
 
 // SendContainerProfileRequest contains the container profile to be stored
@@ -206,28 +203,6 @@ message ListNetworkNeighborhoodsResponse {
   string cont = 5;
 }
 
-// PutSBOMRequest uploads an SBOM blob plus the keys identifying it.
-// customer_guid, cluster, host_type, and host_id are sent via gRPC metadata
-// headers (see the AuthInterceptor on the server side). The unary path is
-// intended for SBOMs up to ~4 MiB; use PutSBOMStream for larger payloads.
-message PutSBOMRequest {
-  // image_digest is the SHA-256 digest of the scanned image (without the
-  // "sha256:" prefix). Part of the primary key.
-  string image_digest = 1;
-
-  // syft_version is the version of syft that produced the blob. Part of the
-  // primary key — multiple syft versions can coexist for one
-  // (customer_guid, image_digest) during gradual fleet upgrades.
-  string syft_version = 2;
-
-  // source identifies how this SBOM was produced.
-  SBOMSource source = 3;
-
-  // sbom is the SBOM payload as a SBOMSyft K8s resource (the same shape
-  // produced by syft + v1beta1.StripSBOM in node-agent / kubevuln).
-  github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.SBOMSyft sbom = 4;
-}
-
 // PutSBOMResponse indicates success or failure of the operation. S3 +
 // Postgres persistence happens asynchronously via Pulsar; success here
 // means the upload was accepted and the Pulsar message was published.
@@ -239,18 +214,18 @@ message PutSBOMResponse {
 
 // PutSBOMChunk is a single chunk of a streamed SBOM upload. The first
 // chunk in the stream MUST set metadata. Subsequent chunks set only
-// blob_chunk. Concatenated blob_chunk values form the serialized SBOMSyft
+// blob_chunk. Concatenated blob_chunk values form the marshaled SBOMSyft
 // proto payload.
 message PutSBOMChunk {
   // metadata is set on the first chunk only.
   PutSBOMChunkMetadata metadata = 1;
 
-  // blob_chunk is a slice of the serialized SBOMSyft payload.
+  // blob_chunk is a slice of the marshaled SBOMSyft payload.
   bytes blob_chunk = 2;
 }
 
 // PutSBOMChunkMetadata is the metadata header sent on the first chunk of a
-// PutSBOMStream call.
+// PutSBOM call.
 message PutSBOMChunkMetadata {
   string image_digest = 1;
   string syft_version = 2;
@@ -275,37 +250,20 @@ message GetSBOMRequest {
   bool metadata_only = 3;
 }
 
-// GetSBOMResponse returns the SBOM (or just metadata).
-message GetSBOMResponse {
-  bool success = 1;
-  string error_message = 2;
-  ErrorCode error_code = 3;
-
-  // exists indicates whether an SBOM row was found for the requested key.
-  // When false, success is still true and metadata + sbom are empty.
-  bool exists = 4;
-
-  // metadata is populated whenever exists=true.
-  SBOMMetadata metadata = 5;
-
-  // sbom is populated only when exists=true and metadata_only was false on
-  // the request.
-  github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.SBOMSyft sbom = 6;
-}
-
-// GetSBOMChunk is a single chunk of a streamed SBOM download. The first
+// GetSBOMChunk is a single chunk of a streamed SBOM response. The first
 // chunk sets metadata + status; subsequent chunks set only blob_chunk.
 message GetSBOMChunk {
   // metadata is set on the first chunk only.
   GetSBOMChunkMetadata metadata = 1;
 
-  // blob_chunk is a slice of the serialized SBOMSyft payload.
+  // blob_chunk is a slice of the marshaled SBOMSyft payload.
   bytes blob_chunk = 2;
 }
 
 // GetSBOMChunkMetadata is the status header sent on the first chunk of a
-// GetSBOMStream call. If exists=false or success=false the server closes
-// the stream without sending blob chunks.
+// GetSBOM response. If exists=false, success=false, or the request set
+// metadata_only=true, the server closes the stream without sending blob
+// chunks.
 message GetSBOMChunkMetadata {
   bool success = 1;
   string error_message = 2;

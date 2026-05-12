@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -493,19 +494,19 @@ func (c *StorageClient) ListNetworkNeighborhoods(ctx context.Context, namespace 
 	return list, nil
 }
 
-// PutSBOM uploads an SBOM to the storage server. Use for payloads small
-// enough to fit in a single gRPC message (~4 MiB). For larger SBOMs, use
-// PutSBOMStream instead.
-func (c *StorageClient) PutSBOM(ctx context.Context, imageDigest, syftVersion string, source proto.SBOMSource, sbom *v1beta1.SBOMSyft) (*proto.PutSBOMResponse, error) {
+// PutSBOM uploads an SBOM identified by (image_digest, syft_version,
+// source). The payload is the marshaled SBOMSyft proto, read from r and
+// sent to the server in chunks of sbomStreamChunkSize. Callers with a
+// typed *v1beta1.SBOMSyft should use MarshalSBOM to obtain r.
+//
+// The underlying RPC is client-streaming; the caller never needs to know
+// the payload size in advance.
+func (c *StorageClient) PutSBOM(ctx context.Context, imageDigest, syftVersion string, source proto.SBOMSource, r io.Reader) (*proto.PutSBOMResponse, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
 	}
-
-	req := &proto.PutSBOMRequest{
-		ImageDigest: imageDigest,
-		SyftVersion: syftVersion,
-		Source:      source,
-		Sbom:        sbom,
+	if r == nil {
+		return nil, fmt.Errorf("payload reader is nil")
 	}
 
 	ctx = c.withMetadata(ctx)
@@ -516,79 +517,63 @@ func (c *StorageClient) PutSBOM(ctx context.Context, imageDigest, syftVersion st
 		defer cancel()
 	}
 
-	return c.protoClient.PutSBOM(ctx, req)
-}
-
-// PutSBOMStream uploads an SBOM to the storage server in chunks. The SBOM
-// is marshaled to its proto wire form and split into ~1 MiB chunks; the
-// first chunk carries metadata, subsequent chunks carry blob bytes only.
-// Use when the SBOM is too large for unary PutSBOM (~4 MiB default gRPC
-// message limit).
-func (c *StorageClient) PutSBOMStream(ctx context.Context, imageDigest, syftVersion string, source proto.SBOMSource, sbom *v1beta1.SBOMSyft) (*proto.PutSBOMResponse, error) {
-	if c.protoClient == nil {
-		return nil, fmt.Errorf("client is not connected")
-	}
-
-	if sbom == nil {
-		return nil, fmt.Errorf("sbom is nil")
-	}
-
-	payload, err := sbom.Marshal()
+	stream, err := c.protoClient.PutSBOM(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal SBOMSyft: %w", err)
+		return nil, fmt.Errorf("failed to open PutSBOM stream: %w", err)
 	}
 
-	ctx = c.withMetadata(ctx)
-
-	if c.callTimeout != nil && *c.callTimeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, *c.callTimeout)
-		defer cancel()
+	// First chunk MUST set metadata, and MAY carry the first slice of bytes.
+	buf := make([]byte, sbomStreamChunkSize)
+	n, readErr := io.ReadFull(r, buf)
+	if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
+		return nil, fmt.Errorf("failed to read payload: %w", readErr)
 	}
-
-	stream, err := c.protoClient.PutSBOMStream(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open PutSBOMStream: %w", err)
-	}
-
-	// First chunk carries metadata + (optionally) the first slice of bytes.
 	first := &proto.PutSBOMChunk{
 		Metadata: &proto.PutSBOMChunkMetadata{
 			ImageDigest: imageDigest,
 			SyftVersion: syftVersion,
 			Source:      source,
 		},
+		BlobChunk: buf[:n],
 	}
-	cut := sbomStreamChunkSize
-	if cut > len(payload) {
-		cut = len(payload)
-	}
-	first.BlobChunk = payload[:cut]
 	if err := stream.Send(first); err != nil {
 		return nil, fmt.Errorf("failed to send first chunk: %w", err)
 	}
 
-	// Subsequent chunks carry blob bytes only.
-	for offset := cut; offset < len(payload); offset += sbomStreamChunkSize {
-		end := offset + sbomStreamChunkSize
-		if end > len(payload) {
-			end = len(payload)
+	// Subsequent chunks carry blob bytes only. ReadFull returns
+	// io.ErrUnexpectedEOF on a short final read, which is normal — we send
+	// whatever bytes we got and then stop on the next iteration.
+	for readErr == nil {
+		n, readErr = io.ReadFull(r, buf)
+		if n > 0 {
+			if err := stream.Send(&proto.PutSBOMChunk{BlobChunk: buf[:n]}); err != nil {
+				return nil, fmt.Errorf("failed to send chunk: %w", err)
+			}
 		}
-		if err := stream.Send(&proto.PutSBOMChunk{BlobChunk: payload[offset:end]}); err != nil {
-			return nil, fmt.Errorf("failed to send chunk: %w", err)
-		}
+	}
+	if readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
+		return nil, fmt.Errorf("failed to read payload: %w", readErr)
 	}
 
 	return stream.CloseAndRecv()
 }
 
 // GetSBOM probes for or fetches an SBOM by (image_digest, syft_version).
-// Set metadataOnly=true to skip the blob and only check whether an SBOM
-// exists. For SBOMs too large to fit in a single gRPC message, use
-// GetSBOMStream when metadataOnly is false.
-func (c *StorageClient) GetSBOM(ctx context.Context, imageDigest, syftVersion string, metadataOnly bool) (*proto.GetSBOMResponse, error) {
+//
+// When metadataOnly is true, or the row does not exist, or the server
+// reports a non-success status, the returned io.ReadCloser is nil — the
+// caller consults the metadata for the answer.
+//
+// Otherwise the returned io.ReadCloser streams the marshaled SBOMSyft
+// proto bytes; use UnmarshalSBOM (or read into your own buffer) to
+// reconstruct the typed object. The caller MUST Close the reader to
+// release the underlying gRPC stream.
+//
+// The underlying RPC is server-streaming; the caller never needs to know
+// the response size in advance.
+func (c *StorageClient) GetSBOM(ctx context.Context, imageDigest, syftVersion string, metadataOnly bool) (*proto.GetSBOMChunkMetadata, io.ReadCloser, error) {
 	if c.protoClient == nil {
-		return nil, fmt.Errorf("client is not connected")
+		return nil, nil, fmt.Errorf("client is not connected")
 	}
 
 	req := &proto.GetSBOMRequest{
@@ -599,79 +584,111 @@ func (c *StorageClient) GetSBOM(ctx context.Context, imageDigest, syftVersion st
 
 	ctx = c.withMetadata(ctx)
 
-	if c.callTimeout != nil && *c.callTimeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, *c.callTimeout)
-		defer cancel()
-	}
-
-	return c.protoClient.GetSBOM(ctx, req)
-}
-
-// GetSBOMStream fetches an SBOM in chunks. The first stream chunk returns
-// metadata + status; subsequent chunks carry the marshaled SBOMSyft bytes,
-// which are concatenated and unmarshaled by this method. Returns
-// (metadata, nil) when the server reports exists=false or success=false —
-// the caller should consult metadata.Success / metadata.Exists before
-// using the returned SBOMSyft.
-func (c *StorageClient) GetSBOMStream(ctx context.Context, imageDigest, syftVersion string) (*proto.GetSBOMChunkMetadata, *v1beta1.SBOMSyft, error) {
-	if c.protoClient == nil {
-		return nil, nil, fmt.Errorf("client is not connected")
-	}
-
-	req := &proto.GetSBOMRequest{
-		ImageDigest: imageDigest,
-		SyftVersion: syftVersion,
-	}
-
-	ctx = c.withMetadata(ctx)
-
-	if c.callTimeout != nil && *c.callTimeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, *c.callTimeout)
-		defer cancel()
-	}
-
-	stream, err := c.protoClient.GetSBOMStream(ctx, req)
+	// Note: we deliberately do NOT apply callTimeout here, because the
+	// caller drives the read cadence via the returned io.ReadCloser. A
+	// per-call timeout would clip large downloads. Callers wanting a
+	// timeout should pass a ctx with their own deadline.
+	streamCtx, cancel := context.WithCancel(ctx)
+	stream, err := c.protoClient.GetSBOM(streamCtx, req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to open GetSBOMStream: %w", err)
+		cancel()
+		return nil, nil, fmt.Errorf("failed to open GetSBOM stream: %w", err)
 	}
 
 	// First chunk MUST carry metadata.
 	firstChunk, err := stream.Recv()
 	if err != nil {
+		cancel()
 		return nil, nil, fmt.Errorf("failed to receive first chunk: %w", err)
 	}
 	md := firstChunk.GetMetadata()
 	if md == nil {
-		return nil, nil, fmt.Errorf("first GetSBOMStream chunk missing metadata")
+		cancel()
+		return nil, nil, fmt.Errorf("first GetSBOM chunk missing metadata")
 	}
 
-	// On error or miss the server closes the stream after the metadata chunk.
-	if !md.Success || !md.Exists {
+	// On miss, error, or metadata-only request, the server closes the
+	// stream after the metadata chunk. Drain and return nil reader.
+	if !md.Success || !md.Exists || metadataOnly {
+		cancel()
 		return md, nil, nil
 	}
 
-	// Accumulate blob bytes. The first chunk may have carried some payload
-	// alongside the metadata.
-	var buf []byte
-	if len(firstChunk.BlobChunk) > 0 {
-		buf = append(buf, firstChunk.BlobChunk...)
+	reader := &sbomStreamReader{
+		stream:  stream,
+		pending: firstChunk.BlobChunk,
+		cancel:  cancel,
 	}
-	for {
-		chunk, err := stream.Recv()
+	return md, reader, nil
+}
+
+// sbomStreamReader adapts a server-streaming GetSBOM RPC to an
+// io.ReadCloser, lazily fetching the next chunk when the previous one is
+// drained.
+type sbomStreamReader struct {
+	stream  grpc.ServerStreamingClient[proto.GetSBOMChunk]
+	pending []byte // buffer of bytes from the most-recent chunk not yet read
+	cancel  context.CancelFunc
+	err     error // sticky error; once set, Read returns it on every call
+}
+
+func (r *sbomStreamReader) Read(p []byte) (int, error) {
+	if r.err != nil {
+		return 0, r.err
+	}
+	for len(r.pending) == 0 {
+		chunk, err := r.stream.Recv()
 		if err == io.EOF {
-			break
+			r.err = io.EOF
+			return 0, io.EOF
 		}
 		if err != nil {
-			return md, nil, fmt.Errorf("failed to receive chunk: %w", err)
+			r.err = err
+			return 0, err
 		}
-		buf = append(buf, chunk.BlobChunk...)
+		r.pending = chunk.BlobChunk
 	}
+	n := copy(p, r.pending)
+	r.pending = r.pending[n:]
+	return n, nil
+}
 
-	sbom := &v1beta1.SBOMSyft{}
-	if err := sbom.Unmarshal(buf); err != nil {
-		return md, nil, fmt.Errorf("failed to unmarshal SBOMSyft: %w", err)
+func (r *sbomStreamReader) Close() error {
+	if r.cancel != nil {
+		r.cancel()
+		r.cancel = nil
 	}
-	return md, sbom, nil
+	return nil
+}
+
+// MarshalSBOM marshals a typed SBOMSyft to its proto wire bytes and
+// returns a reader over them, ready for PutSBOM. The full marshaled blob
+// is held in memory; for very large SBOMs callers may prefer to write
+// pre-marshaled bytes to a temp file and pass an *os.File to PutSBOM.
+func MarshalSBOM(sbom *v1beta1.SBOMSyft) (io.Reader, error) {
+	if sbom == nil {
+		return nil, fmt.Errorf("sbom is nil")
+	}
+	b, err := sbom.Marshal()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal SBOMSyft: %w", err)
+	}
+	return bytes.NewReader(b), nil
+}
+
+// UnmarshalSBOM reads marshaled SBOMSyft proto bytes from r and returns
+// the decoded object. It reads r until EOF; it does not Close r.
+func UnmarshalSBOM(r io.Reader) (*v1beta1.SBOMSyft, error) {
+	if r == nil {
+		return nil, fmt.Errorf("reader is nil")
+	}
+	b, err := io.ReadAll(r)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read SBOM bytes: %w", err)
+	}
+	sbom := &v1beta1.SBOMSyft{}
+	if err := sbom.Unmarshal(b); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal SBOMSyft: %w", err)
+	}
+	return sbom, nil
 }
