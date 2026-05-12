@@ -291,13 +291,11 @@ func (c *StorageClient) SendContainerProfileStream(ctx context.Context, profile 
 		return nil, fmt.Errorf("failed to marshal ContainerProfile: %w", err)
 	}
 
+	// Note: we deliberately do NOT apply callTimeout here. Stream duration
+	// depends on payload size / network speed; the per-call timeout was
+	// chosen for short unary RPCs. Callers wanting a deadline should pass
+	// a ctx with their own.
 	ctx = c.withMetadata(ctx)
-
-	if c.callTimeout != nil && *c.callTimeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, *c.callTimeout)
-		defer cancel()
-	}
 
 	stream, err := c.protoClient.SendContainerProfileStream(ctx)
 	if err != nil {
@@ -352,13 +350,11 @@ func (c *StorageClient) GetContainerProfileStream(ctx context.Context, namespace
 		CloudAccountIdentifier: profileOpts.CloudAccountIdentifier,
 	}
 
+	// Note: we deliberately do NOT apply callTimeout here. Stream duration
+	// depends on payload size / network speed; the per-call timeout was
+	// chosen for short unary RPCs. Callers wanting a deadline should pass
+	// a ctx with their own.
 	ctx = c.withMetadata(ctx)
-
-	if c.callTimeout != nil && *c.callTimeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, *c.callTimeout)
-		defer cancel()
-	}
 
 	stream, err := c.protoClient.GetContainerProfileStream(ctx, req)
 	if err != nil {
@@ -648,12 +644,11 @@ func (c *StorageClient) PutSBOMStream(ctx context.Context, imageDigest, syftVers
 		return nil, fmt.Errorf("payload reader is nil")
 	}
 
+	// Note: we deliberately do NOT apply callTimeout here. Stream duration
+	// depends on payload size / network speed; the per-call timeout was
+	// chosen for short unary RPCs. Callers wanting a deadline should pass
+	// a ctx with their own.
 	ctx = c.withMetadata(ctx)
-
-// Note: we deliberately do NOT apply callTimeout here, because stream
-// duration depends on payload size / network speed. Callers wanting a
-// timeout should pass a ctx with their own deadline.
-	}
 
 	stream, err := c.protoClient.PutSBOMStream(ctx)
 	if err != nil {
@@ -698,14 +693,17 @@ func (c *StorageClient) PutSBOMStream(ctx context.Context, imageDigest, syftVers
 
 // GetSBOMStream probes for or fetches an SBOM by (image_digest, syft_version).
 //
-// When metadataOnly is true, or the row does not exist, or the server
-// reports a non-success status, the returned io.ReadCloser is nil — the
-// caller consults the metadata for the answer.
-//
-// Otherwise the returned io.ReadCloser streams the marshaled SBOMSyft
-// proto bytes; use UnmarshalSBOM (or read into your own buffer) to
-// reconstruct the typed object. The caller MUST Close the reader to
-// release the underlying gRPC stream.
+// Contract:
+//   - Server-reported failure → returns a non-nil error along with the
+//     metadata. Caller's `if err != nil { ... }` is enough; no need to
+//     inspect metadata.Success separately.
+//   - Row does not exist OR metadataOnly is true → returns (md, nil, nil).
+//     Caller consults `md.Exists` to distinguish probe-hit from miss.
+//   - Row exists and metadataOnly is false → returns (md, reader, nil).
+//     The reader streams the marshaled SBOMSyft proto bytes; use
+//     UnmarshalSBOM (or read into your own buffer) to reconstruct the
+//     typed object. The caller MUST Close the reader to release the
+//     underlying gRPC stream.
 //
 // The underlying RPC is server-streaming; the caller never needs to know
 // the response size in advance.
@@ -745,9 +743,16 @@ func (c *StorageClient) GetSBOMStream(ctx context.Context, imageDigest, syftVers
 		return nil, nil, fmt.Errorf("first GetSBOMStream chunk missing metadata")
 	}
 
-	// On miss, error, or metadata-only request, the server closes the
-	// stream after the metadata chunk. Drain and return nil reader.
-	if !md.Success || !md.Exists || metadataOnly {
+	// A server-side failure is a real error — surface it instead of letting
+	// callers misread (md, nil, nil) as a clean miss.
+	if !md.Success {
+		cancel()
+		return md, nil, fmt.Errorf("server reported failure: %s (code: %v)", md.ErrorMessage, md.ErrorCode)
+	}
+
+	// On miss or metadata-only request, the server closes the stream after
+	// the metadata chunk. Drain and return nil reader.
+	if !md.Exists || metadataOnly {
 		cancel()
 		return md, nil, nil
 	}

@@ -675,6 +675,7 @@ type storageRoundTripServer struct {
 	serveMetadata     *proto.SBOMMetadata
 	serveBytes        []byte
 	serveChunkSize    int // 0 → send the whole payload in one chunk
+	serveChunkDelay   time.Duration // sleep before each chunk; for timeout tests
 
 	// ContainerProfile upload state: captured from the most recent
 	// SendContainerProfileStream call.
@@ -716,6 +717,7 @@ func (s *storageRoundTripServer) GetSBOMStream(req *proto.GetSBOMRequest, stream
 	metadata := s.serveMetadata
 	payload := s.serveBytes
 	chunkSize := s.serveChunkSize
+	chunkDelay := s.serveChunkDelay
 	s.mu.Unlock()
 
 	// First chunk MUST carry the metadata header.
@@ -735,12 +737,18 @@ func (s *storageRoundTripServer) GetSBOMStream(req *proto.GetSBOMRequest, stream
 	}
 
 	if chunkSize <= 0 || chunkSize >= len(payload) {
+		if chunkDelay > 0 {
+			time.Sleep(chunkDelay)
+		}
 		return stream.Send(&proto.GetSBOMChunk{BlobChunk: payload})
 	}
 	for offset := 0; offset < len(payload); offset += chunkSize {
 		end := offset + chunkSize
 		if end > len(payload) {
 			end = len(payload)
+		}
+		if chunkDelay > 0 {
+			time.Sleep(chunkDelay)
 		}
 		if err := stream.Send(&proto.GetSBOMChunk{BlobChunk: payload[offset:end]}); err != nil {
 			return err
@@ -802,8 +810,9 @@ func (s *storageRoundTripServer) GetContainerProfileStream(req *proto.GetContain
 }
 
 // startBufconnStorageServer starts the round-trip server on an in-memory
-// bufconn listener and returns a client connected to it.
-func startBufconnStorageServer(t *testing.T) (*storageRoundTripServer, *StorageClient, func()) {
+// bufconn listener and returns a client connected to it. Optional client
+// options (e.g. WithCallTimeout) are forwarded to NewStorageClient.
+func startBufconnStorageServer(t *testing.T, opts ...StorageClientOption) (*storageRoundTripServer, *StorageClient, func()) {
 	t.Helper()
 	const bufsize = 1024 * 1024
 	lis := bufconn.Listen(bufsize)
@@ -819,7 +828,7 @@ func startBufconnStorageServer(t *testing.T) (*storageRoundTripServer, *StorageC
 	)
 	require.NoError(t, err)
 
-	client, err := NewStorageClient("grpc://example.com:50051", "test-account", "test-key", "test-cluster")
+	client, err := NewStorageClient("grpc://example.com:50051", "test-account", "test-key", "test-cluster", opts...)
 	require.NoError(t, err)
 	client.conn = conn
 	client.protoClient = proto.NewStorageServiceClient(conn)
@@ -1098,4 +1107,54 @@ func TestStorageClient_SendContainerProfileStream_NilProfile(t *testing.T) {
 	_, err := client.SendContainerProfileStream(context.Background(), nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "nil")
+}
+
+// TestStorageClient_GetSBOMStream_NotBoundedByCallTimeout proves that the
+// streaming RPC is NOT clipped by WithCallTimeout — a regression matthyx
+// flagged. We configure a very short callTimeout (well under any
+// production stream latency) and have the server delay between chunks
+// by an order of magnitude longer. If the stream were wrapped in
+// context.WithTimeout(callTimeout) the call would fail with
+// "context deadline exceeded"; success here demonstrates the timeout is
+// only applied to unary RPCs.
+//
+// Test stays under 500ms wall time so it's safe in CI.
+func TestStorageClient_GetSBOMStream_NotBoundedByCallTimeout(t *testing.T) {
+	const (
+		shortCallTimeout = 20 * time.Millisecond
+		serverChunkDelay = 50 * time.Millisecond
+		chunks           = 5
+	)
+	// Total stream time on the server ≈ chunks * serverChunkDelay = 250ms,
+	// which is 12× the configured callTimeout. A unary timeout would have
+	// fired within the first 20ms.
+
+	rtSrv, client, cleanup := startBufconnStorageServer(t, WithCallTimeout(shortCallTimeout))
+	defer cleanup()
+
+	original := sampleSBOMSyft()
+	payload, err := original.Marshal()
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(payload), chunks, "payload must have enough bytes to split")
+
+	rtSrv.serveExists = true
+	rtSrv.serveMetadata = &proto.SBOMMetadata{ImageDigest: "abc", SyftVersion: "1.0.0"}
+	rtSrv.serveBytes = payload
+	rtSrv.serveChunkSize = len(payload) / chunks
+	rtSrv.serveChunkDelay = serverChunkDelay
+
+	start := time.Now()
+	md, reader, err := client.GetSBOMStream(context.Background(), "abc", "1.0.0", false)
+	require.NoError(t, err, "stream must not be clipped by callTimeout")
+	require.NotNil(t, reader)
+	defer reader.Close()
+	assert.True(t, md.Exists)
+
+	got, err := UnmarshalSBOM(reader)
+	require.NoError(t, err)
+	assert.Equal(t, original.Name, got.Name)
+
+	elapsed := time.Since(start)
+	assert.Greater(t, elapsed, shortCallTimeout,
+		"sanity: the stream genuinely ran longer than callTimeout (otherwise the test proves nothing)")
 }
