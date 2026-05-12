@@ -481,7 +481,12 @@ func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, n
 	return resp.NetworkNeighborhood, nil
 }
 
-// GetContainerProfile retrieves a ContainerProfile from the storage server
+// GetContainerProfile retrieves a ContainerProfile from the storage server.
+//
+// Deprecated: use GetContainerProfileStream. The unary form goes through
+// GetProfile, which is capped at gRPC's default 4 MiB message size;
+// profiles with many or large entries can exceed this and fail on the
+// wire. The streaming variant has no such bound.
 func (c *StorageClient) GetContainerProfile(ctx context.Context, namespace, name string, opts ...ProfileOption) (*v1beta1.ContainerProfile, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
