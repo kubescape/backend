@@ -9,11 +9,22 @@ import "github.com/kubescape/storage/pkg/apis/softwarecomposition/v1beta1/genera
 // StorageService provides gRPC endpoints for node agent to communicate with backend storage
 service StorageService {
   // SendContainerProfile receives a container profile (time-series snapshot) from node agent
-  // and sends it to Pulsar for processing by the ingester
-  rpc SendContainerProfile(SendContainerProfileRequest) returns (SendContainerProfileResponse);
+  // and sends it to Pulsar for processing by the ingester.
+  //
+  // Deprecated: use SendContainerProfileStream. The unary form is silently
+  // capped by gRPC's default 4 MiB message limit; container profiles with
+  // many or large entries (or with MaxContainerProfileSize raised) can
+  // exceed this and fail on the wire. The streaming variant has no such
+  // bound.
+  rpc SendContainerProfile(SendContainerProfileRequest) returns (SendContainerProfileResponse) {
+    option deprecated = true;
+  }
 
   // GetProfile retrieves an aggregated profile (ApplicationProfile, NetworkNeighborhood,
-  // or ContainerProfile) by fetching them from S3
+  // or ContainerProfile) by fetching them from S3.
+  //
+  // Note: for ContainerProfile specifically, prefer GetContainerProfileStream,
+  // which is not subject to the default 4 MiB unary gRPC message limit.
   rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
 
   // ListApplicationProfiles lists all ApplicationProfiles in a namespace (returns metadata only, nil Spec)
@@ -22,9 +33,30 @@ service StorageService {
   // ListNetworkNeighborhoods lists all NetworkNeighborhoods in a namespace (returns metadata only, nil Spec)
   rpc ListNetworkNeighborhoods(ListNetworkNeighborhoodsRequest) returns (ListNetworkNeighborhoodsResponse);
 
-  // PutSBOM uploads an SBOM produced for an image. Client-streaming so the
-  // caller need not know the payload size in advance and can stream bytes
-  // from any io.Reader. Idempotent on (customer_guid, image_digest,
+  // SendContainerProfileStream is the streaming replacement for
+  // SendContainerProfile. Client-streaming so the caller need not know the
+  // payload size in advance — required because container profiles with
+  // many or large entries can exceed the default 4 MiB unary gRPC limit.
+  //
+  // The first chunk MUST set metadata (which carries identifying labels
+  // and may be empty otherwise) and MAY include blob_chunk for small
+  // payloads. Subsequent chunks set only blob_chunk. Concatenated
+  // blob_chunk values form the marshaled ContainerProfile proto payload.
+  rpc SendContainerProfileStream(stream ContainerProfileChunk) returns (SendContainerProfileResponse);
+
+  // GetContainerProfileStream is the streaming replacement for
+  // GetProfile(kind=ContainerProfile). Server-streaming so the caller need
+  // not know the response size in advance.
+  //
+  // The first chunk in the response carries metadata + status. When the
+  // profile does not exist or success is false, the server closes the
+  // stream after the metadata chunk. Otherwise subsequent chunks carry
+  // the marshaled ContainerProfile bytes.
+  rpc GetContainerProfileStream(GetContainerProfileStreamRequest) returns (stream GetContainerProfileStreamChunk);
+
+  // PutSBOMStream uploads an SBOM produced for an image. Client-streaming
+  // so the caller need not know the payload size in advance and can stream
+  // bytes from any io.Reader. Idempotent on (customer_guid, image_digest,
   // syft_version) — duplicate calls upsert the metadata row and overwrite
   // the S3 blob; end-state is consistent.
   //
@@ -32,17 +64,17 @@ service StorageService {
   // and MAY include blob_chunk for small payloads. Subsequent chunks set
   // only blob_chunk. Concatenated blob_chunk values form the marshaled
   // SBOMSyft proto payload.
-  rpc PutSBOM(stream PutSBOMChunk) returns (PutSBOMResponse);
+  rpc PutSBOMStream(stream PutSBOMChunk) returns (PutSBOMResponse);
 
-  // GetSBOM probes for or fetches an SBOM by (customer_guid, image_digest,
-  // syft_version). Server-streaming so the caller need not know the
-  // response size in advance.
+  // GetSBOMStream probes for or fetches an SBOM by (customer_guid,
+  // image_digest, syft_version). Server-streaming so the caller need not
+  // know the response size in advance.
   //
   // The first chunk in the response carries metadata + status. When the
   // request sets metadata_only=true OR the row does not exist OR success
   // is false, the server closes the stream after the metadata chunk.
   // Otherwise subsequent chunks carry the marshaled SBOMSyft bytes.
-  rpc GetSBOM(GetSBOMRequest) returns (stream GetSBOMChunk);
+  rpc GetSBOMStream(GetSBOMRequest) returns (stream GetSBOMChunk);
 }
 
 // SendContainerProfileRequest contains the container profile to be stored
@@ -201,6 +233,70 @@ message ListNetworkNeighborhoodsResponse {
 
   // Continue token for next page (empty if no more results)
   string cont = 5;
+}
+
+// ContainerProfileChunk is a single chunk of a streamed ContainerProfile
+// upload (SendContainerProfileStream). The first chunk in the stream MUST
+// set metadata. Subsequent chunks set only blob_chunk. Concatenated
+// blob_chunk values form the marshaled ContainerProfile proto payload.
+message ContainerProfileChunk {
+  // metadata is set on the first chunk only.
+  ContainerProfileChunkMetadata metadata = 1;
+
+  // blob_chunk is a slice of the marshaled ContainerProfile payload.
+  bytes blob_chunk = 2;
+}
+
+// ContainerProfileChunkMetadata is the metadata header sent on the first
+// chunk of a SendContainerProfileStream call. All identifying fields
+// (cluster, host_type, host_id) continue to be carried via gRPC metadata
+// headers as in the unary path; this message is reserved for any future
+// per-call options that the unary form would have put in the request.
+message ContainerProfileChunkMetadata {
+  // reserved for future use; the message exists so the chunked-protocol
+  // shape matches PutSBOMChunk and clients can begin streaming today
+  // without an additional API revision when options are added.
+}
+
+// GetContainerProfileStreamRequest mirrors the ContainerProfile-shaped
+// fields of GetProfileRequest. customer_guid, cluster, host_type, and
+// host_id are sent via gRPC metadata headers.
+message GetContainerProfileStreamRequest {
+  // Namespace of the workload.
+  string namespace = 1;
+
+  // Name of the container profile to fetch.
+  string name = 2;
+
+  // Region of the resource (non-k8s scope identifier).
+  string region = 3;
+
+  // CloudAccountIdentifier of the resource (non-k8s scope identifier).
+  string cloud_account_identifier = 4;
+}
+
+// GetContainerProfileStreamChunk is a single chunk of a streamed
+// ContainerProfile download. The first chunk sets metadata + status;
+// subsequent chunks set only blob_chunk.
+message GetContainerProfileStreamChunk {
+  // metadata is set on the first chunk only.
+  GetContainerProfileStreamChunkMetadata metadata = 1;
+
+  // blob_chunk is a slice of the marshaled ContainerProfile payload.
+  bytes blob_chunk = 2;
+}
+
+// GetContainerProfileStreamChunkMetadata is the status header sent on the
+// first chunk of a GetContainerProfileStream response. If success is
+// false or exists is false the server closes the stream without sending
+// blob chunks.
+message GetContainerProfileStreamChunkMetadata {
+  bool success = 1;
+  string error_message = 2;
+  ErrorCode error_code = 3;
+
+  // exists indicates whether a ContainerProfile row was found.
+  bool exists = 4;
 }
 
 // PutSBOMResponse indicates success or failure of the operation. S3 +
