@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -19,6 +20,10 @@ type mockStorageServiceClient struct {
 	getProfileFunc               func(ctx context.Context, in *proto.GetProfileRequest, opts ...grpc.CallOption) (*proto.GetProfileResponse, error)
 	listApplicationProfilesFunc  func(ctx context.Context, in *proto.ListApplicationProfilesRequest, opts ...grpc.CallOption) (*proto.ListApplicationProfilesResponse, error)
 	listNetworkNeighborhoodsFunc func(ctx context.Context, in *proto.ListNetworkNeighborhoodsRequest, opts ...grpc.CallOption) (*proto.ListNetworkNeighborhoodsResponse, error)
+	putSBOMFunc                  func(ctx context.Context, in *proto.PutSBOMRequest, opts ...grpc.CallOption) (*proto.PutSBOMResponse, error)
+	getSBOMFunc                  func(ctx context.Context, in *proto.GetSBOMRequest, opts ...grpc.CallOption) (*proto.GetSBOMResponse, error)
+	putSBOMStreamFunc            func(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[proto.PutSBOMChunk, proto.PutSBOMResponse], error)
+	getSBOMStreamFunc            func(ctx context.Context, in *proto.GetSBOMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.GetSBOMChunk], error)
 }
 
 func (m *mockStorageServiceClient) SendContainerProfile(ctx context.Context, in *proto.SendContainerProfileRequest, opts ...grpc.CallOption) (*proto.SendContainerProfileResponse, error) {
@@ -47,6 +52,34 @@ func (m *mockStorageServiceClient) ListNetworkNeighborhoods(ctx context.Context,
 		return m.listNetworkNeighborhoodsFunc(ctx, in, opts...)
 	}
 	return &proto.ListNetworkNeighborhoodsResponse{Success: true}, nil
+}
+
+func (m *mockStorageServiceClient) PutSBOM(ctx context.Context, in *proto.PutSBOMRequest, opts ...grpc.CallOption) (*proto.PutSBOMResponse, error) {
+	if m.putSBOMFunc != nil {
+		return m.putSBOMFunc(ctx, in, opts...)
+	}
+	return &proto.PutSBOMResponse{Success: true}, nil
+}
+
+func (m *mockStorageServiceClient) GetSBOM(ctx context.Context, in *proto.GetSBOMRequest, opts ...grpc.CallOption) (*proto.GetSBOMResponse, error) {
+	if m.getSBOMFunc != nil {
+		return m.getSBOMFunc(ctx, in, opts...)
+	}
+	return &proto.GetSBOMResponse{Success: true}, nil
+}
+
+func (m *mockStorageServiceClient) PutSBOMStream(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[proto.PutSBOMChunk, proto.PutSBOMResponse], error) {
+	if m.putSBOMStreamFunc != nil {
+		return m.putSBOMStreamFunc(ctx, opts...)
+	}
+	return nil, fmt.Errorf("PutSBOMStream not implemented in mock")
+}
+
+func (m *mockStorageServiceClient) GetSBOMStream(ctx context.Context, in *proto.GetSBOMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.GetSBOMChunk], error) {
+	if m.getSBOMStreamFunc != nil {
+		return m.getSBOMStreamFunc(ctx, in, opts...)
+	}
+	return nil, fmt.Errorf("GetSBOMStream not implemented in mock")
 }
 
 func TestNewStorageClient(t *testing.T) {
@@ -611,6 +644,103 @@ func TestParseGRPCURL(t *testing.T) {
 				assert.Equal(t, tt.expectedCfg.Host, config.Host)
 				assert.Equal(t, tt.expectedCfg.Port, config.Port)
 				assert.Equal(t, tt.url, config.URL)
+			}
+		})
+	}
+}
+
+func TestStorageClient_PutSBOM(t *testing.T) {
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
+	require.NoError(t, err)
+
+	const (
+		imageDigest = "abc123def456"
+		syftVersion = "1.0.0"
+	)
+
+	mockClient := &mockStorageServiceClient{
+		putSBOMFunc: func(ctx context.Context, in *proto.PutSBOMRequest, opts ...grpc.CallOption) (*proto.PutSBOMResponse, error) {
+			assert.Equal(t, imageDigest, in.ImageDigest)
+			assert.Equal(t, syftVersion, in.SyftVersion)
+			assert.Equal(t, proto.SBOMSource_SBOM_SOURCE_WORKLOAD, in.Source)
+			assert.NotNil(t, in.Sbom)
+			return &proto.PutSBOMResponse{Success: true}, nil
+		},
+	}
+	client.protoClient = mockClient
+
+	resp, err := client.PutSBOM(context.Background(), imageDigest, syftVersion, proto.SBOMSource_SBOM_SOURCE_WORKLOAD, &v1beta1.SBOMSyft{})
+	require.NoError(t, err)
+	assert.True(t, resp.Success)
+}
+
+func TestStorageClient_GetSBOM(t *testing.T) {
+	client, err := NewStorageClient("grpc://storage.example.com:50051", "test-account", "test-key", "test-cluster")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name         string
+		imageDigest  string
+		syftVersion  string
+		metadataOnly bool
+		exists       bool
+	}{
+		{
+			name:         "metadata-only probe, hit",
+			imageDigest:  "abc123",
+			syftVersion:  "1.0.0",
+			metadataOnly: true,
+			exists:       true,
+		},
+		{
+			name:         "metadata-only probe, miss",
+			imageDigest:  "deadbeef",
+			syftVersion:  "1.0.0",
+			metadataOnly: true,
+			exists:       false,
+		},
+		{
+			name:         "full fetch, hit",
+			imageDigest:  "abc123",
+			syftVersion:  "1.0.0",
+			metadataOnly: false,
+			exists:       true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mockClient := &mockStorageServiceClient{
+				getSBOMFunc: func(ctx context.Context, in *proto.GetSBOMRequest, opts ...grpc.CallOption) (*proto.GetSBOMResponse, error) {
+					assert.Equal(t, tc.imageDigest, in.ImageDigest)
+					assert.Equal(t, tc.syftVersion, in.SyftVersion)
+					assert.Equal(t, tc.metadataOnly, in.MetadataOnly)
+					resp := &proto.GetSBOMResponse{Success: true, Exists: tc.exists}
+					if tc.exists {
+						resp.Metadata = &proto.SBOMMetadata{
+							ImageDigest: tc.imageDigest,
+							SyftVersion: tc.syftVersion,
+						}
+						if !tc.metadataOnly {
+							resp.Sbom = &v1beta1.SBOMSyft{}
+						}
+					}
+					return resp, nil
+				},
+			}
+			client.protoClient = mockClient
+
+			resp, err := client.GetSBOM(context.Background(), tc.imageDigest, tc.syftVersion, tc.metadataOnly)
+			require.NoError(t, err)
+			assert.True(t, resp.Success)
+			assert.Equal(t, tc.exists, resp.Exists)
+			if tc.exists {
+				assert.NotNil(t, resp.Metadata)
+				if tc.metadataOnly {
+					assert.Nil(t, resp.Sbom)
+				} else {
+					assert.NotNil(t, resp.Sbom)
+				}
 			}
 		})
 	}

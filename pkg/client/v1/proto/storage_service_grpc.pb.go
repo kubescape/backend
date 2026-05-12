@@ -23,6 +23,10 @@ const (
 	StorageService_GetProfile_FullMethodName               = "/storageserver.v1.StorageService/GetProfile"
 	StorageService_ListApplicationProfiles_FullMethodName  = "/storageserver.v1.StorageService/ListApplicationProfiles"
 	StorageService_ListNetworkNeighborhoods_FullMethodName = "/storageserver.v1.StorageService/ListNetworkNeighborhoods"
+	StorageService_PutSBOM_FullMethodName                  = "/storageserver.v1.StorageService/PutSBOM"
+	StorageService_PutSBOMStream_FullMethodName            = "/storageserver.v1.StorageService/PutSBOMStream"
+	StorageService_GetSBOM_FullMethodName                  = "/storageserver.v1.StorageService/GetSBOM"
+	StorageService_GetSBOMStream_FullMethodName            = "/storageserver.v1.StorageService/GetSBOMStream"
 )
 
 // StorageServiceClient is the client API for StorageService service.
@@ -34,13 +38,34 @@ type StorageServiceClient interface {
 	// SendContainerProfile receives a container profile (time-series snapshot) from node agent
 	// and sends it to Pulsar for processing by the ingester
 	SendContainerProfile(ctx context.Context, in *SendContainerProfileRequest, opts ...grpc.CallOption) (*SendContainerProfileResponse, error)
-	// GetProfile retrieves an aggregated profile (ApplicationProfile or NetworkNeighborhood)
-	// by fetching container profiles from S3 and aggregating them
+	// GetProfile retrieves an aggregated profile (ApplicationProfile, NetworkNeighborhood,
+	// or ContainerProfile) by fetching them from S3
 	GetProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*GetProfileResponse, error)
 	// ListApplicationProfiles lists all ApplicationProfiles in a namespace (returns metadata only, nil Spec)
 	ListApplicationProfiles(ctx context.Context, in *ListApplicationProfilesRequest, opts ...grpc.CallOption) (*ListApplicationProfilesResponse, error)
 	// ListNetworkNeighborhoods lists all NetworkNeighborhoods in a namespace (returns metadata only, nil Spec)
 	ListNetworkNeighborhoods(ctx context.Context, in *ListNetworkNeighborhoodsRequest, opts ...grpc.CallOption) (*ListNetworkNeighborhoodsResponse, error)
+	// PutSBOM uploads an SBOM produced for an image. Idempotent on
+	// (customer_guid, image_digest, syft_version) — duplicate calls upsert the
+	// metadata row and overwrite the S3 blob; end-state is consistent. Used
+	// for SBOM payloads up to the default 4 MiB gRPC message limit.
+	PutSBOM(ctx context.Context, in *PutSBOMRequest, opts ...grpc.CallOption) (*PutSBOMResponse, error)
+	// PutSBOMStream uploads an SBOM larger than the default 4 MiB unary gRPC
+	// message limit, chunked client-side. The first chunk in the stream MUST
+	// set metadata (image_digest, syft_version, source); subsequent chunks
+	// set only blob_chunk. Concatenated chunks form the serialized SBOMSyft
+	// proto payload.
+	PutSBOMStream(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[PutSBOMChunk, PutSBOMResponse], error)
+	// GetSBOM probes for or fetches an SBOM by (customer_guid, image_digest,
+	// syft_version). Set metadata_only=true to skip transferring the blob —
+	// used by agents to decide whether to regenerate. Returns the same
+	// envelope (with exists=false) on a miss.
+	GetSBOM(ctx context.Context, in *GetSBOMRequest, opts ...grpc.CallOption) (*GetSBOMResponse, error)
+	// GetSBOMStream returns an SBOM larger than the default 4 MiB unary gRPC
+	// message limit, server-streamed. The first chunk sets metadata + status;
+	// subsequent chunks set only blob_chunk. The metadata_only flag on the
+	// request is ignored — GetSBOM (unary) is the metadata-only entry point.
+	GetSBOMStream(ctx context.Context, in *GetSBOMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GetSBOMChunk], error)
 }
 
 type storageServiceClient struct {
@@ -91,6 +116,58 @@ func (c *storageServiceClient) ListNetworkNeighborhoods(ctx context.Context, in 
 	return out, nil
 }
 
+func (c *storageServiceClient) PutSBOM(ctx context.Context, in *PutSBOMRequest, opts ...grpc.CallOption) (*PutSBOMResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PutSBOMResponse)
+	err := c.cc.Invoke(ctx, StorageService_PutSBOM_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *storageServiceClient) PutSBOMStream(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[PutSBOMChunk, PutSBOMResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &StorageService_ServiceDesc.Streams[0], StorageService_PutSBOMStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[PutSBOMChunk, PutSBOMResponse]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type StorageService_PutSBOMStreamClient = grpc.ClientStreamingClient[PutSBOMChunk, PutSBOMResponse]
+
+func (c *storageServiceClient) GetSBOM(ctx context.Context, in *GetSBOMRequest, opts ...grpc.CallOption) (*GetSBOMResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSBOMResponse)
+	err := c.cc.Invoke(ctx, StorageService_GetSBOM_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *storageServiceClient) GetSBOMStream(ctx context.Context, in *GetSBOMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GetSBOMChunk], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &StorageService_ServiceDesc.Streams[1], StorageService_GetSBOMStream_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[GetSBOMRequest, GetSBOMChunk]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type StorageService_GetSBOMStreamClient = grpc.ServerStreamingClient[GetSBOMChunk]
+
 // StorageServiceServer is the server API for StorageService service.
 // All implementations must embed UnimplementedStorageServiceServer
 // for forward compatibility.
@@ -100,13 +177,34 @@ type StorageServiceServer interface {
 	// SendContainerProfile receives a container profile (time-series snapshot) from node agent
 	// and sends it to Pulsar for processing by the ingester
 	SendContainerProfile(context.Context, *SendContainerProfileRequest) (*SendContainerProfileResponse, error)
-	// GetProfile retrieves an aggregated profile (ApplicationProfile or NetworkNeighborhood)
-	// by fetching container profiles from S3 and aggregating them
+	// GetProfile retrieves an aggregated profile (ApplicationProfile, NetworkNeighborhood,
+	// or ContainerProfile) by fetching them from S3
 	GetProfile(context.Context, *GetProfileRequest) (*GetProfileResponse, error)
 	// ListApplicationProfiles lists all ApplicationProfiles in a namespace (returns metadata only, nil Spec)
 	ListApplicationProfiles(context.Context, *ListApplicationProfilesRequest) (*ListApplicationProfilesResponse, error)
 	// ListNetworkNeighborhoods lists all NetworkNeighborhoods in a namespace (returns metadata only, nil Spec)
 	ListNetworkNeighborhoods(context.Context, *ListNetworkNeighborhoodsRequest) (*ListNetworkNeighborhoodsResponse, error)
+	// PutSBOM uploads an SBOM produced for an image. Idempotent on
+	// (customer_guid, image_digest, syft_version) — duplicate calls upsert the
+	// metadata row and overwrite the S3 blob; end-state is consistent. Used
+	// for SBOM payloads up to the default 4 MiB gRPC message limit.
+	PutSBOM(context.Context, *PutSBOMRequest) (*PutSBOMResponse, error)
+	// PutSBOMStream uploads an SBOM larger than the default 4 MiB unary gRPC
+	// message limit, chunked client-side. The first chunk in the stream MUST
+	// set metadata (image_digest, syft_version, source); subsequent chunks
+	// set only blob_chunk. Concatenated chunks form the serialized SBOMSyft
+	// proto payload.
+	PutSBOMStream(grpc.ClientStreamingServer[PutSBOMChunk, PutSBOMResponse]) error
+	// GetSBOM probes for or fetches an SBOM by (customer_guid, image_digest,
+	// syft_version). Set metadata_only=true to skip transferring the blob —
+	// used by agents to decide whether to regenerate. Returns the same
+	// envelope (with exists=false) on a miss.
+	GetSBOM(context.Context, *GetSBOMRequest) (*GetSBOMResponse, error)
+	// GetSBOMStream returns an SBOM larger than the default 4 MiB unary gRPC
+	// message limit, server-streamed. The first chunk sets metadata + status;
+	// subsequent chunks set only blob_chunk. The metadata_only flag on the
+	// request is ignored — GetSBOM (unary) is the metadata-only entry point.
+	GetSBOMStream(*GetSBOMRequest, grpc.ServerStreamingServer[GetSBOMChunk]) error
 	mustEmbedUnimplementedStorageServiceServer()
 }
 
@@ -128,6 +226,18 @@ func (UnimplementedStorageServiceServer) ListApplicationProfiles(context.Context
 }
 func (UnimplementedStorageServiceServer) ListNetworkNeighborhoods(context.Context, *ListNetworkNeighborhoodsRequest) (*ListNetworkNeighborhoodsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListNetworkNeighborhoods not implemented")
+}
+func (UnimplementedStorageServiceServer) PutSBOM(context.Context, *PutSBOMRequest) (*PutSBOMResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PutSBOM not implemented")
+}
+func (UnimplementedStorageServiceServer) PutSBOMStream(grpc.ClientStreamingServer[PutSBOMChunk, PutSBOMResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method PutSBOMStream not implemented")
+}
+func (UnimplementedStorageServiceServer) GetSBOM(context.Context, *GetSBOMRequest) (*GetSBOMResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSBOM not implemented")
+}
+func (UnimplementedStorageServiceServer) GetSBOMStream(*GetSBOMRequest, grpc.ServerStreamingServer[GetSBOMChunk]) error {
+	return status.Errorf(codes.Unimplemented, "method GetSBOMStream not implemented")
 }
 func (UnimplementedStorageServiceServer) mustEmbedUnimplementedStorageServiceServer() {}
 func (UnimplementedStorageServiceServer) testEmbeddedByValue()                        {}
@@ -222,6 +332,60 @@ func _StorageService_ListNetworkNeighborhoods_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _StorageService_PutSBOM_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PutSBOMRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StorageServiceServer).PutSBOM(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StorageService_PutSBOM_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StorageServiceServer).PutSBOM(ctx, req.(*PutSBOMRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StorageService_PutSBOMStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(StorageServiceServer).PutSBOMStream(&grpc.GenericServerStream[PutSBOMChunk, PutSBOMResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type StorageService_PutSBOMStreamServer = grpc.ClientStreamingServer[PutSBOMChunk, PutSBOMResponse]
+
+func _StorageService_GetSBOM_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSBOMRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StorageServiceServer).GetSBOM(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StorageService_GetSBOM_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StorageServiceServer).GetSBOM(ctx, req.(*GetSBOMRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _StorageService_GetSBOMStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetSBOMRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(StorageServiceServer).GetSBOMStream(m, &grpc.GenericServerStream[GetSBOMRequest, GetSBOMChunk]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type StorageService_GetSBOMStreamServer = grpc.ServerStreamingServer[GetSBOMChunk]
+
 // StorageService_ServiceDesc is the grpc.ServiceDesc for StorageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -245,7 +409,26 @@ var StorageService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "ListNetworkNeighborhoods",
 			Handler:    _StorageService_ListNetworkNeighborhoods_Handler,
 		},
+		{
+			MethodName: "PutSBOM",
+			Handler:    _StorageService_PutSBOM_Handler,
+		},
+		{
+			MethodName: "GetSBOM",
+			Handler:    _StorageService_GetSBOM_Handler,
+		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "PutSBOMStream",
+			Handler:       _StorageService_PutSBOMStream_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "GetSBOMStream",
+			Handler:       _StorageService_GetSBOMStream_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "storage_service.proto",
 }
