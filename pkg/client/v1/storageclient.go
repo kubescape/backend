@@ -20,9 +20,15 @@ import (
 )
 
 // sbomStreamChunkSize is the per-chunk byte budget used by PutSBOMStream
-// and GetSBOMStream. Set well below the default 4 MiB gRPC message limit
+// and GetSBOMStream. Set well below the configured gRPC message limit
 // to leave headroom for framing overhead.
 const sbomStreamChunkSize = 1 << 20 // 1 MiB
+
+// maxGRPCMessageSize is the per-message cap configured on this client for
+// both send and receive. grpc-go defaults receive to 4 MiB; we raise it
+// so unary RPCs (e.g. GetProfile, SendContainerProfile) can carry larger
+// payloads. The server must be configured with at least the same limit.
+const maxGRPCMessageSize = 128 << 20 // 128 MiB
 
 // Default gRPC ports
 const (
@@ -215,6 +221,11 @@ func (c *StorageClient) Connect() error {
 		// Use insecure credentials
 		dialOpts = append(dialOpts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
+
+	dialOpts = append(dialOpts, grpc.WithDefaultCallOptions(
+		grpc.MaxCallRecvMsgSize(maxGRPCMessageSize),
+		grpc.MaxCallSendMsgSize(maxGRPCMessageSize),
+	))
 
 	conn, err := grpc.NewClient(c.address, dialOpts...)
 	if err != nil {
