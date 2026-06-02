@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -83,62 +82,37 @@ func TestCheckLatestVersion(t *testing.T) {
 }
 
 func TestVersionCheckHandler_getLatestVersion(t *testing.T) {
-	type fields struct {
-		versionURL string
-	}
-	type args struct {
-		versionData *VersionCheckRequest
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		want    *VersionCheckResponse
-		wantErr bool
-	}{
-		{
-			name: "Get latest version",
-			fields: fields{
-				versionURL: "https://version-check.ks-services.co",
-			},
-			args: args{
-				versionData: &VersionCheckRequest{
-					Client: "kubescape",
-				},
-			},
-			want: &VersionCheckResponse{
-				Client:       "kubescape",
-				ClientUpdate: "v3.0.15",
-			},
-			wantErr: false,
-		},
-		{
-			name: "Failed to get latest version",
-			fields: fields{
-				versionURL: "https://example.com",
-			},
-			args: args{
-				versionData: &VersionCheckRequest{},
-			},
-			want:    nil,
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			v := &VersionCheckHandler{
-				versionURL: tt.fields.versionURL,
-			}
-			got, err := v.getLatestVersion(tt.args.versionData)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("VersionCheckHandler.getLatestVersion() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("VersionCheckHandler.getLatestVersion() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	t.Run("Get latest version", func(t *testing.T) {
+		// Live canary against the deployed version-check service. A request
+		// with an empty clientVersion MUST be told the latest version -- this
+		// guards the ksgf1v1 regression where empty/unparseable client
+		// versions silently received no clientUpdate. We assert a *valid*
+		// version rather than a hardcoded one so routine kubescape releases
+		// (which bump the reference) don't break this test.
+		v := &VersionCheckHandler{
+			versionURL: "https://version-check.ks-services.co",
+		}
+		got, err := v.getLatestVersion(&VersionCheckRequest{Client: "kubescape"})
+		if err != nil {
+			t.Fatalf("getLatestVersion() unexpected error = %v", err)
+		}
+		if got == nil {
+			t.Fatal("getLatestVersion() returned a nil response")
+		}
+		assert.Equal(t, "kubescape", got.Client)
+		assert.NotEmpty(t, got.ClientUpdate, "empty clientVersion must be told the latest version")
+		assert.True(t, semver.IsValid(normalizeVersion(got.ClientUpdate)),
+			"ClientUpdate %q must be a valid semantic version", got.ClientUpdate)
+	})
+
+	t.Run("Failed to get latest version", func(t *testing.T) {
+		v := &VersionCheckHandler{
+			versionURL: "https://example.com",
+		}
+		got, err := v.getLatestVersion(&VersionCheckRequest{})
+		assert.Error(t, err)
+		assert.Nil(t, got)
+	})
 }
 
 func TestGetTriggerSource(t *testing.T) {
