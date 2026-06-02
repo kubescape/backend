@@ -924,6 +924,15 @@ func TestStorageClient_SBOMRoundTrip(t *testing.T) {
 		rtSrv.serveMetadata = &proto.SBOMMetadata{
 			ImageDigest: imageDigest,
 			SyftVersion: syftVersion,
+			// Annotations let agents branch (on status, tool-version,
+			// node-name, scanner-memory-limit, ...) without downloading the
+			// full blob; they MUST survive the metadata_only path.
+			Annotations: map[string]string{
+				"kubescape.io/status":               "completed",
+				"kubescape.io/tool-version":         syftVersion,
+				"kubescape.io/node-name":            "node-1",
+				"kubescape.io/scanner-memory-limit": "1500Mi",
+			},
 		}
 
 		md, reader, err := client.GetSBOMStream(context.Background(), imageDigest, syftVersion, true)
@@ -932,6 +941,8 @@ func TestStorageClient_SBOMRoundTrip(t *testing.T) {
 		assert.True(t, md.Exists)
 		require.NotNil(t, md.SbomMetadata)
 		assert.Equal(t, imageDigest, md.SbomMetadata.ImageDigest)
+		assert.Equal(t, rtSrv.serveMetadata.Annotations, md.SbomMetadata.Annotations,
+			"annotations must round-trip through the metadata_only path")
 		assert.Nil(t, reader, "metadata-only probe must not return a reader")
 	})
 

@@ -389,4 +389,10 @@ message SBOMMetadata {
   // last_referenced_at is the RFC3339 timestamp when the orchestrator most
   // recently resolved an inventory entry to this SBOM. Drives eviction.
   string last_referenced_at = 6;
+
+  // annotations carries the SBOMSyft's Kubernetes annotations so a
+  // metadata_only=true fetch is sufficient for agents that branch on them
+  // (e.g. status, tool-version, node-name, scanner-memory-limit) without
+  // downloading and unmarshaling the full SBOM blob.
+  map<string, string> annotations = 7;
 }

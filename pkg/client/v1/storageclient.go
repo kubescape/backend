@@ -698,7 +698,11 @@ func (c *StorageClient) PutSBOMStream(ctx context.Context, imageDigest, syftVers
 //     metadata. Caller's `if err != nil { ... }` is enough; no need to
 //     inspect metadata.Success separately.
 //   - Row does not exist OR metadataOnly is true → returns (md, nil, nil).
-//     Caller consults `md.Exists` to distinguish probe-hit from miss.
+//     Caller consults `md.Exists` to distinguish probe-hit from miss. On a
+//     hit, md.SbomMetadata carries the indexed view including the SBOM's
+//     annotations (md.SbomMetadata.Annotations), so callers that only need
+//     to branch on annotations can stay on the metadata_only path instead
+//     of downloading and unmarshaling the full blob.
 //   - Row exists and metadataOnly is false → returns (md, reader, nil).
 //     The reader streams the marshaled SBOMSyft proto bytes; use
 //     UnmarshalSBOM (or read into your own buffer) to reconstruct the
