@@ -468,6 +468,31 @@ type storageRoundTripServer struct {
 	cpServeExists    bool
 	cpServeBytes     []byte
 	cpServeChunkSize int
+
+	// ContainerProfile upload extras: chunk accounting + abort injection for
+	// the SendContainerProfileStream error/chunking tests.
+	cpReceivedChunks int  // number of ContainerProfileChunk messages received
+	cpSendAbort      bool // if true, Recv one chunk then return an error (mid-stream abort)
+
+	// GetContainerProfileStream error-injection knobs. At most one should be
+	// set per test; they are checked in the handler in the order below.
+	cpGetFirstRecvErr bool // return an error before sending anything (client's first Recv fails)
+	cpGetNilMetadata  bool // send a first chunk whose Metadata is nil
+	cpGetNotSuccess   bool // send metadata with Success=false + error fields
+	cpGetMidStreamErr bool // send valid metadata + one blob chunk, then return an error
+
+	// Unary SendContainerProfile config.
+	unarySendReceived *proto.SendContainerProfileRequest
+	unarySendSuccess  bool
+	unarySendErrMsg   string
+	unarySendErrCode  proto.ErrorCode
+
+	// Unary GetProfile config.
+	unaryGetReceived *proto.GetProfileRequest
+	unaryGetSuccess  bool
+	unaryGetProfile  *v1beta1.ContainerProfile
+	unaryGetErrMsg   string
+	unaryGetErrCode  proto.ErrorCode
 }
 
 func (s *storageRoundTripServer) PutSBOMStream(stream grpc.ClientStreamingServer[proto.PutSBOMChunk, proto.PutSBOMResponse]) error {
@@ -540,7 +565,12 @@ func (s *storageRoundTripServer) GetSBOMStream(req *proto.GetSBOMRequest, stream
 }
 
 func (s *storageRoundTripServer) SendContainerProfileStream(stream grpc.ClientStreamingServer[proto.ContainerProfileChunk, proto.SendContainerProfileResponse]) error {
+	s.mu.Lock()
+	abort := s.cpSendAbort
+	s.mu.Unlock()
+
 	var buf []byte
+	var count int
 	for {
 		chunk, err := stream.Recv()
 		if err == io.EOF {
@@ -549,10 +579,21 @@ func (s *storageRoundTripServer) SendContainerProfileStream(stream grpc.ClientSt
 		if err != nil {
 			return err
 		}
+		count++
 		buf = append(buf, chunk.BlobChunk...)
+		if abort {
+			// Terminate the stream mid-upload. Once this handler returns an
+			// error, the client's subsequent stream.Send calls observe the
+			// closed stream and fail.
+			s.mu.Lock()
+			s.cpReceivedChunks = count
+			s.mu.Unlock()
+			return fmt.Errorf("server aborting mid-stream")
+		}
 	}
 	s.mu.Lock()
 	s.cpReceivedBytes = buf
+	s.cpReceivedChunks = count
 	s.mu.Unlock()
 	return stream.SendAndClose(&proto.SendContainerProfileResponse{Success: true})
 }
@@ -562,7 +603,47 @@ func (s *storageRoundTripServer) GetContainerProfileStream(req *proto.GetContain
 	exists := s.cpServeExists
 	payload := s.cpServeBytes
 	chunkSize := s.cpServeChunkSize
+	firstRecvErr := s.cpGetFirstRecvErr
+	nilMetadata := s.cpGetNilMetadata
+	notSuccess := s.cpGetNotSuccess
+	midStreamErr := s.cpGetMidStreamErr
 	s.mu.Unlock()
+
+	// Fail before sending anything: the client's first stream.Recv observes
+	// the RPC error.
+	if firstRecvErr {
+		return fmt.Errorf("server refused the request")
+	}
+
+	// Send a first chunk that carries no metadata header.
+	if nilMetadata {
+		return stream.Send(&proto.GetContainerProfileStreamChunk{BlobChunk: []byte("no-metadata")})
+	}
+
+	// Send a metadata header that reports a server-side failure.
+	if notSuccess {
+		return stream.Send(&proto.GetContainerProfileStreamChunk{
+			Metadata: &proto.GetContainerProfileStreamChunkMetadata{
+				Success:      false,
+				ErrorMessage: "boom on the server",
+				ErrorCode:    proto.ErrorCode_ERROR_CODE_INTERNAL_ERROR,
+			},
+		})
+	}
+
+	// Send valid metadata + one blob chunk, then abort so the client's
+	// mid-stream Recv (inside the reassembly loop) observes an error.
+	if midStreamErr {
+		if err := stream.Send(&proto.GetContainerProfileStreamChunk{
+			Metadata: &proto.GetContainerProfileStreamChunkMetadata{Success: true, Exists: true},
+		}); err != nil {
+			return err
+		}
+		if err := stream.Send(&proto.GetContainerProfileStreamChunk{BlobChunk: []byte("partial")}); err != nil {
+			return err
+		}
+		return fmt.Errorf("server aborting mid-stream")
+	}
 
 	first := &proto.GetContainerProfileStreamChunk{
 		Metadata: &proto.GetContainerProfileStreamChunkMetadata{
@@ -589,6 +670,31 @@ func (s *storageRoundTripServer) GetContainerProfileStream(req *proto.GetContain
 		}
 	}
 	return nil
+}
+
+func (s *storageRoundTripServer) SendContainerProfile(ctx context.Context, req *proto.SendContainerProfileRequest) (*proto.SendContainerProfileResponse, error) {
+	s.mu.Lock()
+	s.unarySendReceived = req
+	resp := &proto.SendContainerProfileResponse{
+		Success:      s.unarySendSuccess,
+		ErrorMessage: s.unarySendErrMsg,
+		ErrorCode:    s.unarySendErrCode,
+	}
+	s.mu.Unlock()
+	return resp, nil
+}
+
+func (s *storageRoundTripServer) GetProfile(ctx context.Context, req *proto.GetProfileRequest) (*proto.GetProfileResponse, error) {
+	s.mu.Lock()
+	s.unaryGetReceived = req
+	resp := &proto.GetProfileResponse{
+		Success:          s.unaryGetSuccess,
+		ContainerProfile: s.unaryGetProfile,
+		ErrorMessage:     s.unaryGetErrMsg,
+		ErrorCode:        s.unaryGetErrCode,
+	}
+	s.mu.Unlock()
+	return resp, nil
 }
 
 // startBufconnStorageServer starts the round-trip server on an in-memory
