@@ -24,8 +24,6 @@ import (
 type mockStorageServiceClient struct {
 	sendContainerProfileFunc     func(ctx context.Context, in *proto.SendContainerProfileRequest, opts ...grpc.CallOption) (*proto.SendContainerProfileResponse, error)
 	getProfileFunc               func(ctx context.Context, in *proto.GetProfileRequest, opts ...grpc.CallOption) (*proto.GetProfileResponse, error)
-	listApplicationProfilesFunc  func(ctx context.Context, in *proto.ListApplicationProfilesRequest, opts ...grpc.CallOption) (*proto.ListApplicationProfilesResponse, error)
-	listNetworkNeighborhoodsFunc func(ctx context.Context, in *proto.ListNetworkNeighborhoodsRequest, opts ...grpc.CallOption) (*proto.ListNetworkNeighborhoodsResponse, error)
 	putSBOMStreamFunc            func(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[proto.PutSBOMChunk, proto.PutSBOMResponse], error)
 	getSBOMStreamFunc            func(ctx context.Context, in *proto.GetSBOMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.GetSBOMChunk], error)
 	sendContainerProfileStreamFunc func(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[proto.ContainerProfileChunk, proto.SendContainerProfileResponse], error)
@@ -44,20 +42,6 @@ func (m *mockStorageServiceClient) GetProfile(ctx context.Context, in *proto.Get
 		return m.getProfileFunc(ctx, in, opts...)
 	}
 	return &proto.GetProfileResponse{Success: true}, nil
-}
-
-func (m *mockStorageServiceClient) ListApplicationProfiles(ctx context.Context, in *proto.ListApplicationProfilesRequest, opts ...grpc.CallOption) (*proto.ListApplicationProfilesResponse, error) {
-	if m.listApplicationProfilesFunc != nil {
-		return m.listApplicationProfilesFunc(ctx, in, opts...)
-	}
-	return &proto.ListApplicationProfilesResponse{Success: true}, nil
-}
-
-func (m *mockStorageServiceClient) ListNetworkNeighborhoods(ctx context.Context, in *proto.ListNetworkNeighborhoodsRequest, opts ...grpc.CallOption) (*proto.ListNetworkNeighborhoodsResponse, error) {
-	if m.listNetworkNeighborhoodsFunc != nil {
-		return m.listNetworkNeighborhoodsFunc(ctx, in, opts...)
-	}
-	return &proto.ListNetworkNeighborhoodsResponse{Success: true}, nil
 }
 
 func (m *mockStorageServiceClient) PutSBOMStream(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[proto.PutSBOMChunk, proto.PutSBOMResponse], error) {
