@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"context"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -222,7 +223,13 @@ func (api *KSCloudAPI) ListFrameworks() ([]string, error) {
 }
 
 // GetExceptions returns exception policies.
-func (api *KSCloudAPI) GetExceptions(clusterName string, opts ...RequestOption) ([]PostureExceptionPolicy, error) {
+func (api *KSCloudAPI) GetExceptions(clusterName string) ([]PostureExceptionPolicy, error) {
+	return api.GetExceptionsWithContext(context.Background(), clusterName)
+}
+
+// GetExceptionsWithContext returns exception policies with the provided context.
+func (api *KSCloudAPI) GetExceptionsWithContext(ctx context.Context, clusterName string, opts ...RequestOption) ([]PostureExceptionPolicy, error) {
+	opts = append([]RequestOption{WithContext(ctx)}, opts...)
 	rdr, _, err := api.get(api.getExceptionsURL(clusterName), opts...)
 	if err != nil {
 		return nil, err
@@ -314,7 +321,13 @@ func (api *KSCloudAPI) getAccountConfigDefault(clusterName string) string {
 }
 
 // GetControlsInputs returns the controls inputs configured in the account configuration.
-func (api *KSCloudAPI) GetControlsInputs(clusterName string, opts ...RequestOption) (map[string][]string, error) {
+func (api *KSCloudAPI) GetControlsInputs(clusterName string) (map[string][]string, error) {
+	return api.GetControlsInputsWithContext(context.Background(), clusterName)
+}
+
+// GetControlsInputsWithContext returns the controls inputs configured in the account configuration with the provided context.
+func (api *KSCloudAPI) GetControlsInputsWithContext(ctx context.Context, clusterName string, opts ...RequestOption) (map[string][]string, error) {
+	opts = append([]RequestOption{WithContext(ctx)}, opts...)
 	accountConfig, err := api.GetAccountConfig(clusterName, opts...)
 	if err != nil {
 		return nil, err
