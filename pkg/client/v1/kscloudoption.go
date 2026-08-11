@@ -101,6 +101,13 @@ func WithHeaders(headers map[string]string) RequestOption {
 	}
 }
 
+// WithContext sets the context for the request
+func WithContext(ctx context.Context) RequestOption {
+	return func(o *RequestOptions) {
+		o.reqContext = ctx
+	}
+}
+
 // withTrace dumps requests for debugging
 func withTrace(enabled bool) RequestOption {
 	return func(o *RequestOptions) {

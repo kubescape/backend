@@ -222,8 +222,8 @@ func (api *KSCloudAPI) ListFrameworks() ([]string, error) {
 }
 
 // GetExceptions returns exception policies.
-func (api *KSCloudAPI) GetExceptions(clusterName string) ([]PostureExceptionPolicy, error) {
-	rdr, _, err := api.get(api.getExceptionsURL(clusterName))
+func (api *KSCloudAPI) GetExceptions(clusterName string, opts ...RequestOption) ([]PostureExceptionPolicy, error) {
+	rdr, _, err := api.get(api.getExceptionsURL(clusterName), opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -249,12 +249,12 @@ func (api *KSCloudAPI) getExceptionsURL(clusterName string) string {
 }
 
 // GetAccountConfig yields the account configuration.
-func (api *KSCloudAPI) GetAccountConfig(clusterName string) (*CustomerConfig, error) {
+func (api *KSCloudAPI) GetAccountConfig(clusterName string, opts ...RequestOption) (*CustomerConfig, error) {
 	if api.accountID == "" {
 		return &CustomerConfig{}, nil
 	}
 
-	rdr, _, err := api.get(api.getAccountConfig(clusterName))
+	rdr, _, err := api.get(api.getAccountConfig(clusterName), opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +263,7 @@ func (api *KSCloudAPI) GetAccountConfig(clusterName string) (*CustomerConfig, er
 	accountConfig, err := utils.Decode[CustomerConfig](rdr)
 	if err != nil {
 		// retry with default scope
-		rdr, _, err = api.get(api.getAccountConfigDefault(clusterName))
+		rdr, _, err = api.get(api.getAccountConfigDefault(clusterName), opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -314,8 +314,8 @@ func (api *KSCloudAPI) getAccountConfigDefault(clusterName string) string {
 }
 
 // GetControlsInputs returns the controls inputs configured in the account configuration.
-func (api *KSCloudAPI) GetControlsInputs(clusterName string) (map[string][]string, error) {
-	accountConfig, err := api.GetAccountConfig(clusterName)
+func (api *KSCloudAPI) GetControlsInputs(clusterName string, opts ...RequestOption) (map[string][]string, error) {
+	accountConfig, err := api.GetAccountConfig(clusterName, opts...)
 	if err != nil {
 		return nil, err
 	}
