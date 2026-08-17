@@ -27,6 +27,7 @@ const (
 	StorageService_GetContainerProfileStream_FullMethodName  = "/storageserver.v1.StorageService/GetContainerProfileStream"
 	StorageService_PutSBOMStream_FullMethodName              = "/storageserver.v1.StorageService/PutSBOMStream"
 	StorageService_GetSBOMStream_FullMethodName              = "/storageserver.v1.StorageService/GetSBOMStream"
+	StorageService_PatchSBOMAnnotations_FullMethodName       = "/storageserver.v1.StorageService/PatchSBOMAnnotations"
 )
 
 // StorageServiceClient is the client API for StorageService service.
@@ -94,6 +95,11 @@ type StorageServiceClient interface {
 	// is false, the server closes the stream after the metadata chunk.
 	// Otherwise subsequent chunks carry the marshaled SBOMSyft bytes.
 	GetSBOMStream(ctx context.Context, in *GetSBOMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[GetSBOMChunk], error)
+	// PatchSBOMAnnotations updates only the annotations of an existing SBOM row,
+	// atomically and without rewriting the blob. Merge-patch semantics: keys in
+	// `set` are added or overwritten, keys in `delete` are removed, all other
+	// annotations are left untouched. Not-found if the row does not exist.
+	PatchSBOMAnnotations(ctx context.Context, in *PatchSBOMAnnotationsRequest, opts ...grpc.CallOption) (*PatchSBOMAnnotationsResponse, error)
 }
 
 type storageServiceClient struct {
@@ -209,6 +215,16 @@ func (c *storageServiceClient) GetSBOMStream(ctx context.Context, in *GetSBOMReq
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type StorageService_GetSBOMStreamClient = grpc.ServerStreamingClient[GetSBOMChunk]
 
+func (c *storageServiceClient) PatchSBOMAnnotations(ctx context.Context, in *PatchSBOMAnnotationsRequest, opts ...grpc.CallOption) (*PatchSBOMAnnotationsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PatchSBOMAnnotationsResponse)
+	err := c.cc.Invoke(ctx, StorageService_PatchSBOMAnnotations_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // StorageServiceServer is the server API for StorageService service.
 // All implementations must embed UnimplementedStorageServiceServer
 // for forward compatibility.
@@ -274,6 +290,11 @@ type StorageServiceServer interface {
 	// is false, the server closes the stream after the metadata chunk.
 	// Otherwise subsequent chunks carry the marshaled SBOMSyft bytes.
 	GetSBOMStream(*GetSBOMRequest, grpc.ServerStreamingServer[GetSBOMChunk]) error
+	// PatchSBOMAnnotations updates only the annotations of an existing SBOM row,
+	// atomically and without rewriting the blob. Merge-patch semantics: keys in
+	// `set` are added or overwritten, keys in `delete` are removed, all other
+	// annotations are left untouched. Not-found if the row does not exist.
+	PatchSBOMAnnotations(context.Context, *PatchSBOMAnnotationsRequest) (*PatchSBOMAnnotationsResponse, error)
 	mustEmbedUnimplementedStorageServiceServer()
 }
 
@@ -307,6 +328,9 @@ func (UnimplementedStorageServiceServer) PutSBOMStream(grpc.ClientStreamingServe
 }
 func (UnimplementedStorageServiceServer) GetSBOMStream(*GetSBOMRequest, grpc.ServerStreamingServer[GetSBOMChunk]) error {
 	return status.Errorf(codes.Unimplemented, "method GetSBOMStream not implemented")
+}
+func (UnimplementedStorageServiceServer) PatchSBOMAnnotations(context.Context, *PatchSBOMAnnotationsRequest) (*PatchSBOMAnnotationsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PatchSBOMAnnotations not implemented")
 }
 func (UnimplementedStorageServiceServer) mustEmbedUnimplementedStorageServiceServer() {}
 func (UnimplementedStorageServiceServer) testEmbeddedByValue()                        {}
@@ -437,6 +461,24 @@ func _StorageService_GetSBOMStream_Handler(srv interface{}, stream grpc.ServerSt
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type StorageService_GetSBOMStreamServer = grpc.ServerStreamingServer[GetSBOMChunk]
 
+func _StorageService_PatchSBOMAnnotations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PatchSBOMAnnotationsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StorageServiceServer).PatchSBOMAnnotations(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: StorageService_PatchSBOMAnnotations_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StorageServiceServer).PatchSBOMAnnotations(ctx, req.(*PatchSBOMAnnotationsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // StorageService_ServiceDesc is the grpc.ServiceDesc for StorageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -459,6 +501,10 @@ var StorageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListNetworkNeighborhoods",
 			Handler:    _StorageService_ListNetworkNeighborhoods_Handler,
+		},
+		{
+			MethodName: "PatchSBOMAnnotations",
+			Handler:    _StorageService_PatchSBOMAnnotations_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

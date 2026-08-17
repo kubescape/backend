@@ -15,7 +15,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -30,6 +32,7 @@ type mockStorageServiceClient struct {
 	getSBOMStreamFunc            func(ctx context.Context, in *proto.GetSBOMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.GetSBOMChunk], error)
 	sendContainerProfileStreamFunc func(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[proto.ContainerProfileChunk, proto.SendContainerProfileResponse], error)
 	getContainerProfileStreamFunc  func(ctx context.Context, in *proto.GetContainerProfileStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.GetContainerProfileStreamChunk], error)
+	patchSBOMAnnotationsFunc       func(ctx context.Context, in *proto.PatchSBOMAnnotationsRequest, opts ...grpc.CallOption) (*proto.PatchSBOMAnnotationsResponse, error)
 }
 
 func (m *mockStorageServiceClient) SendContainerProfile(ctx context.Context, in *proto.SendContainerProfileRequest, opts ...grpc.CallOption) (*proto.SendContainerProfileResponse, error) {
@@ -72,6 +75,13 @@ func (m *mockStorageServiceClient) GetSBOMStream(ctx context.Context, in *proto.
 		return m.getSBOMStreamFunc(ctx, in, opts...)
 	}
 	return nil, fmt.Errorf("GetSBOMStream not implemented in mock")
+}
+
+func (m *mockStorageServiceClient) PatchSBOMAnnotations(ctx context.Context, in *proto.PatchSBOMAnnotationsRequest, opts ...grpc.CallOption) (*proto.PatchSBOMAnnotationsResponse, error) {
+	if m.patchSBOMAnnotationsFunc != nil {
+		return m.patchSBOMAnnotationsFunc(ctx, in, opts...)
+	}
+	return &proto.PatchSBOMAnnotationsResponse{Success: true}, nil
 }
 
 func (m *mockStorageServiceClient) SendContainerProfileStream(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[proto.ContainerProfileChunk, proto.SendContainerProfileResponse], error) {
@@ -686,6 +696,12 @@ type storageRoundTripServer struct {
 	cpServeExists    bool
 	cpServeBytes     []byte
 	cpServeChunkSize int
+
+	// PatchSBOMAnnotations state and config
+	receivedPatchReq *proto.PatchSBOMAnnotationsRequest
+	patchResp        *proto.PatchSBOMAnnotationsResponse
+	patchErr         error
+	patchDelay       time.Duration
 }
 
 func (s *storageRoundTripServer) PutSBOMStream(stream grpc.ClientStreamingServer[proto.PutSBOMChunk, proto.PutSBOMResponse]) error {
@@ -807,6 +823,52 @@ func (s *storageRoundTripServer) GetContainerProfileStream(req *proto.GetContain
 		}
 	}
 	return nil
+}
+
+func (s *storageRoundTripServer) PatchSBOMAnnotations(ctx context.Context, req *proto.PatchSBOMAnnotationsRequest) (*proto.PatchSBOMAnnotationsResponse, error) {
+	s.mu.Lock()
+	s.receivedPatchReq = req
+	resp := s.patchResp
+	err := s.patchErr
+	delay := s.patchDelay
+	s.mu.Unlock()
+
+	if delay > 0 {
+		select {
+		case <-time.After(delay):
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	if resp != nil {
+		return resp, nil
+	}
+
+	mergedAnnotations := make(map[string]string)
+	if s.serveMetadata != nil && s.serveMetadata.Annotations != nil {
+		for k, v := range s.serveMetadata.Annotations {
+			mergedAnnotations[k] = v
+		}
+	}
+	for k, v := range req.Set {
+		mergedAnnotations[k] = v
+	}
+	for _, k := range req.Delete {
+		delete(mergedAnnotations, k)
+	}
+
+	return &proto.PatchSBOMAnnotationsResponse{
+		Success: true,
+		SbomMetadata: &proto.SBOMMetadata{
+			ImageDigest: req.ImageDigest,
+			SyftVersion: req.SyftVersion,
+			Annotations: mergedAnnotations,
+		},
+	}, nil
 }
 
 // startBufconnStorageServer starts the round-trip server on an in-memory
@@ -1169,3 +1231,86 @@ func TestStorageClient_GetSBOMStream_NotBoundedByCallTimeout(t *testing.T) {
 	assert.Greater(t, elapsed, shortCallTimeout,
 		"sanity: the stream genuinely ran longer than callTimeout (otherwise the test proves nothing)")
 }
+
+func TestStorageClient_PatchSBOMAnnotations(t *testing.T) {
+	const (
+		imageDigest = "sha256:deadbeef"
+		syftVersion = "1.0.0"
+	)
+
+	t.Run("successful patch merges set and delete", func(t *testing.T) {
+		rtSrv, client, cleanup := startBufconnStorageServer(t)
+		defer cleanup()
+
+		rtSrv.serveMetadata = &proto.SBOMMetadata{
+			ImageDigest: imageDigest,
+			SyftVersion: syftVersion,
+			Annotations: map[string]string{
+				"status":    "initializing",
+				"node":      "node-1",
+				"to-delete": "val",
+			},
+		}
+
+		set := map[string]string{
+			"status":  "completed",
+			"new-key": "hello",
+		}
+		del := []string{"to-delete"}
+
+		md, err := client.PatchSBOMAnnotations(context.Background(), imageDigest, syftVersion, set, del)
+		require.NoError(t, err)
+		require.NotNil(t, md)
+
+		// Assert server received request
+		require.NotNil(t, rtSrv.receivedPatchReq)
+		assert.Equal(t, imageDigest, rtSrv.receivedPatchReq.ImageDigest)
+		assert.Equal(t, syftVersion, rtSrv.receivedPatchReq.SyftVersion)
+		assert.Equal(t, set, rtSrv.receivedPatchReq.Set)
+		assert.Equal(t, del, rtSrv.receivedPatchReq.Delete)
+
+		// Assert returned metadata reflections
+		assert.Equal(t, "completed", md.Annotations["status"])
+		assert.Equal(t, "node-1", md.Annotations["node"])
+		assert.Equal(t, "hello", md.Annotations["new-key"])
+		_, exists := md.Annotations["to-delete"]
+		assert.False(t, exists)
+	})
+
+	t.Run("server error returns formatted failure", func(t *testing.T) {
+		rtSrv, client, cleanup := startBufconnStorageServer(t)
+		defer cleanup()
+
+		rtSrv.patchResp = &proto.PatchSBOMAnnotationsResponse{
+			Success:      false,
+			ErrorMessage: "row not found",
+			ErrorCode:    proto.ErrorCode_ERROR_CODE_SBOM_NOT_FOUND,
+		}
+
+		md, err := client.PatchSBOMAnnotations(context.Background(), imageDigest, syftVersion, map[string]string{"k": "v"}, nil)
+		require.Error(t, err)
+		assert.Nil(t, md)
+		assert.Contains(t, err.Error(), "row not found")
+		assert.Contains(t, err.Error(), "ERROR_CODE_SBOM_NOT_FOUND")
+	})
+
+	t.Run("not connected returns error", func(t *testing.T) {
+		client := &StorageClient{}
+		md, err := client.PatchSBOMAnnotations(context.Background(), imageDigest, syftVersion, map[string]string{"k": "v"}, nil)
+		require.Error(t, err)
+		assert.Nil(t, md)
+		assert.Contains(t, err.Error(), "client is not connected")
+	})
+
+	t.Run("respects call timeout", func(t *testing.T) {
+		rtSrv, client, cleanup := startBufconnStorageServer(t, WithCallTimeout(20*time.Millisecond))
+		defer cleanup()
+
+		rtSrv.patchDelay = 100 * time.Millisecond
+
+		_, err := client.PatchSBOMAnnotations(context.Background(), imageDigest, syftVersion, map[string]string{"k": "v"}, nil)
+		require.Error(t, err)
+		assert.Equal(t, codes.DeadlineExceeded, status.Code(err))
+	})
+}
+
