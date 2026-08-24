@@ -1,12 +1,17 @@
 package v1
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"math/rand"
+	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -437,4 +442,130 @@ func TestGetExceptionsURL(t *testing.T) {
 			require.Equal(t, tt.expectedURL, resultURL)
 		})
 	}
+}
+
+type contextTestKey struct{}
+
+// recordingRoundTripper captures the outgoing request so a test can inspect what
+// actually reached the transport. When blocking is set it waits for the request
+// context to be done instead of answering, which simulates an upload that is
+// already in flight.
+type recordingRoundTripper struct {
+	requests chan *http.Request
+	blocking bool
+}
+
+func (rt *recordingRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	rt.requests <- req
+
+	if rt.blocking {
+		<-req.Context().Done()
+		return nil, req.Context().Err()
+	}
+
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(strings.NewReader("ok")),
+		Header:     make(http.Header),
+		Request:    req,
+	}, nil
+}
+
+func TestSubmitReportWithContext(t *testing.T) {
+	const (
+		cluster  = "special-cluster"
+		reportID = "5d817063-096f-4d91-b39b-8665240080af"
+	)
+
+	newAPI := func(t *testing.T, rt http.RoundTripper) *KSCloudAPI {
+		t.Helper()
+
+		ks, err := NewKSCloudAPI(
+			"https://api.armo.cloud",
+			"https://report.armo.cloud",
+			"account",
+			"",
+			append(testOptions, WithHTTPClient(&http.Client{Transport: rt}))...,
+		)
+		require.NoError(t, err)
+
+		return ks
+	}
+
+	t.Run("should carry the caller context to the transport", func(t *testing.T) {
+		rt := &recordingRoundTripper{requests: make(chan *http.Request, 1)}
+		ks := newAPI(t, rt)
+
+		ctx := context.WithValue(context.Background(), contextTestKey{}, "value")
+		_, err := ks.SubmitReportWithContext(ctx, mockPostureReport(t, reportID, cluster))
+		require.NoError(t, err)
+
+		req := <-rt.requests
+		require.Equal(t, "value", req.Context().Value(contextTestKey{}))
+	})
+
+	t.Run("should cancel an upload that is already in flight", func(t *testing.T) {
+		rt := &recordingRoundTripper{requests: make(chan *http.Request, 1), blocking: true}
+		ks := newAPI(t, rt)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		errCh := make(chan error, 1)
+		go func() {
+			_, err := ks.SubmitReportWithContext(ctx, mockPostureReport(t, reportID, cluster))
+			errCh <- err
+		}()
+
+		<-rt.requests // the request has reached the transport
+		cancel()
+
+		select {
+		case err := <-errCh:
+			require.Error(t, err)
+			require.ErrorIs(t, err, context.Canceled)
+		case <-time.After(5 * time.Second):
+			t.Fatal("cancelling the context did not stop the in-flight upload")
+		}
+	})
+
+	t.Run("should report an expired deadline as such", func(t *testing.T) {
+		rt := &recordingRoundTripper{requests: make(chan *http.Request, 1), blocking: true}
+		ks := newAPI(t, rt)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
+
+		_, err := ks.SubmitReportWithContext(ctx, mockPostureReport(t, reportID, cluster))
+		require.Error(t, err)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+	})
+
+	t.Run("should still apply request options", func(t *testing.T) {
+		rt := &recordingRoundTripper{requests: make(chan *http.Request, 1)}
+		ks := newAPI(t, rt)
+
+		_, err := ks.SubmitReportWithContext(
+			context.Background(),
+			mockPostureReport(t, reportID, cluster),
+			WithHeaders(map[string]string{"X-Test-Header": "set"}),
+		)
+		require.NoError(t, err)
+
+		req := <-rt.requests
+		require.Equal(t, "set", req.Header.Get("X-Test-Header"))
+		require.Equal(t, "application/json", req.Header.Get("Content-Type"))
+	})
+
+	t.Run("should keep SubmitReport working without a context", func(t *testing.T) {
+		rt := &recordingRoundTripper{requests: make(chan *http.Request, 1)}
+		ks := newAPI(t, rt)
+
+		body, err := ks.SubmitReport(mockPostureReport(t, reportID, cluster))
+		require.NoError(t, err)
+		require.Equal(t, "ok", body)
+
+		req := <-rt.requests
+		require.Equal(t, http.MethodPost, req.Method)
+	})
 }
