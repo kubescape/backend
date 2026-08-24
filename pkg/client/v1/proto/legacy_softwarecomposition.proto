@@ -1,0 +1,122 @@
+// This file vendors the ApplicationProfile and NetworkNeighborhood message
+// definitions that github.com/kubescape/storage removed in
+// https://github.com/kubescape/storage/pull/351 (storage v0.0.303), where
+// they were superseded by the unified ContainerProfile message. The
+// backend's gRPC API still exposes these messages on the wire for backward
+// compatibility with existing clients.
+//
+// The message shapes below are copied verbatim - field numbers, types and
+// all - from github.com/kubescape/storage v0.0.302's generated.proto, the
+// last version that defined them. Sub-messages that storage still exports
+// (ExecCalls, OpenCalls, SingleSeccompProfile, HTTPEndpoint, RulePolicy,
+// IdentifiedCallStack, NetworkNeighbor) are referenced directly from the
+// storage package rather than duplicated here.
+//
+// This file is NOT wired into `make proto` and must not be passed to
+// protoc-gen-gogo here: this repo's plain `--gogo_out` invocation emits the
+// old reflection-based (XXX_-field) style, not the embedded-struct,
+// fast-marshal style go-to-protobuf produced for the original storage
+// types - the two are wire-INCOMPATIBLE. It exists purely to document the
+// wire shape in IDL form; the authoritative Go implementation is
+// hand-maintained in pkg/apis/softwarecomposition/v1beta1/generated.pb.go
+// and must be kept in sync with this file by hand.
+
+syntax = "proto2";
+
+package github.com.kubescape.backend.pkg.apis.softwarecomposition.v1beta1;
+
+import "github.com/kubescape/storage/pkg/apis/softwarecomposition/v1beta1/generated.proto";
+import "k8s.io/apimachinery/pkg/apis/meta/v1/generated.proto";
+
+option go_package = "github.com/kubescape/backend/pkg/apis/softwarecomposition/v1beta1";
+
+// ApplicationProfile represents a learned application profile for a workload.
+//
+// Deprecated: removed from github.com/kubescape/storage in favor of
+// ContainerProfile. Kept here for gRPC wire compatibility.
+message ApplicationProfile {
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional ApplicationProfileSpec spec = 2;
+
+  optional ApplicationProfileStatus status = 3;
+}
+
+message ApplicationProfileContainer {
+  optional string name = 1;
+
+  repeated string capabilities = 2;
+
+  repeated .github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.ExecCalls execs = 3;
+
+  repeated .github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.OpenCalls opens = 4;
+
+  repeated string syscalls = 5;
+
+  optional .github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.SingleSeccompProfile seccompProfile = 6;
+
+  repeated .github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.HTTPEndpoint endpoints = 7;
+
+  optional string imageID = 8;
+
+  optional string imageTag = 9;
+
+  map<string, .github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.RulePolicy> rulePolicies = 10;
+
+  repeated .github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.IdentifiedCallStack identifiedCallStacks = 11;
+}
+
+message ApplicationProfileList {
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated ApplicationProfile items = 2;
+}
+
+message ApplicationProfileSpec {
+  repeated string architectures = 1;
+
+  repeated ApplicationProfileContainer containers = 2;
+
+  repeated ApplicationProfileContainer initContainers = 3;
+
+  repeated ApplicationProfileContainer ephemeralContainers = 4;
+}
+
+message ApplicationProfileStatus {
+}
+
+// NetworkNeighborhood represents a list of network communications for a
+// specific workload.
+//
+// Deprecated: removed from github.com/kubescape/storage in favor of
+// ContainerProfile. Kept here for gRPC wire compatibility.
+message NetworkNeighborhood {
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ObjectMeta metadata = 1;
+
+  optional NetworkNeighborhoodSpec spec = 2;
+}
+
+message NetworkNeighborhoodContainer {
+  optional string name = 1;
+
+  repeated .github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighbor ingress = 2;
+
+  repeated .github.com.kubescape.storage.pkg.apis.softwarecomposition.v1beta1.NetworkNeighbor egress = 3;
+}
+
+// NetworkNeighborhoodList is a list of NetworkNeighborhoods.
+message NetworkNeighborhoodList {
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.ListMeta metadata = 1;
+
+  repeated NetworkNeighborhood items = 2;
+}
+
+message NetworkNeighborhoodSpec {
+  optional .k8s.io.apimachinery.pkg.apis.meta.v1.LabelSelector labelSelector = 3;
+
+  repeated NetworkNeighborhoodContainer containers = 4;
+
+  repeated NetworkNeighborhoodContainer initContainers = 5;
+
+  repeated NetworkNeighborhoodContainer ephemeralContainers = 6;
+}

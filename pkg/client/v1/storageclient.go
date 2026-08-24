@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	legacyv1beta1 "github.com/kubescape/backend/pkg/apis/softwarecomposition/v1beta1"
 	"github.com/kubescape/backend/pkg/client/v1/proto"
 	backendv1 "github.com/kubescape/backend/pkg/server/v1"
 	"github.com/kubescape/storage/pkg/apis/softwarecomposition/v1beta1"
@@ -403,7 +404,7 @@ func (c *StorageClient) GetContainerProfileStream(ctx context.Context, namespace
 // For backward compatibility, region and cloudAccountIdentifier can be provided via ProfileOption
 // Old way: GetApplicationProfile(ctx, "ns", "name")
 // New way: GetApplicationProfile(ctx, "ns", "name", WithProfileRegion("us-east-1"), WithProfileCloudAccountIdentifier("123"))
-func (c *StorageClient) GetApplicationProfile(ctx context.Context, namespace, name string, opts ...ProfileOption) (*v1beta1.ApplicationProfile, error) {
+func (c *StorageClient) GetApplicationProfile(ctx context.Context, namespace, name string, opts ...ProfileOption) (*legacyv1beta1.ApplicationProfile, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
 	}
@@ -442,7 +443,7 @@ func (c *StorageClient) GetApplicationProfile(ctx context.Context, namespace, na
 // For backward compatibility, region and cloudAccountIdentifier can be provided via ProfileOption
 // Old way: GetNetworkNeighborhood(ctx, "ns", "name")
 // New way: GetNetworkNeighborhood(ctx, "ns", "name", WithProfileRegion("us-east-1"), WithProfileCloudAccountIdentifier("123"))
-func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, name string, opts ...ProfileOption) (*v1beta1.NetworkNeighborhood, error) {
+func (c *StorageClient) GetNetworkNeighborhood(ctx context.Context, namespace, name string, opts ...ProfileOption) (*legacyv1beta1.NetworkNeighborhood, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
 	}
@@ -522,7 +523,7 @@ func (c *StorageClient) GetContainerProfile(ctx context.Context, namespace, name
 // For backward compatibility, region and cloudAccountIdentifier can be provided via ProfileOption
 // Old way: ListApplicationProfiles(ctx, "ns", 100, "")
 // New way: ListApplicationProfiles(ctx, "ns", 100, "", WithProfileRegion("us-east-1"), WithProfileCloudAccountIdentifier("123"))
-func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace string, limit int64, cont string, opts ...ProfileOption) (*v1beta1.ApplicationProfileList, error) {
+func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace string, limit int64, cont string, opts ...ProfileOption) (*legacyv1beta1.ApplicationProfileList, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
 	}
@@ -555,14 +556,14 @@ func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace s
 	}
 
 	// Convert pointer slice to value slice for ApplicationProfileList
-	items := make([]v1beta1.ApplicationProfile, len(resp.ApplicationProfiles))
+	items := make([]legacyv1beta1.ApplicationProfile, len(resp.ApplicationProfiles))
 	for i, p := range resp.ApplicationProfiles {
 		if p != nil {
 			items[i] = *p
 		}
 	}
 
-	list := &v1beta1.ApplicationProfileList{
+	list := &legacyv1beta1.ApplicationProfileList{
 		Items: items,
 	}
 
@@ -578,7 +579,7 @@ func (c *StorageClient) ListApplicationProfiles(ctx context.Context, namespace s
 // For backward compatibility, region and cloudAccountIdentifier can be provided via ProfileOption
 // Old way: ListNetworkNeighborhoods(ctx, "ns", 100, "")
 // New way: ListNetworkNeighborhoods(ctx, "ns", 100, "", WithProfileRegion("us-east-1"), WithProfileCloudAccountIdentifier("123"))
-func (c *StorageClient) ListNetworkNeighborhoods(ctx context.Context, namespace string, limit int64, cont string, opts ...ProfileOption) (*v1beta1.NetworkNeighborhoodList, error) {
+func (c *StorageClient) ListNetworkNeighborhoods(ctx context.Context, namespace string, limit int64, cont string, opts ...ProfileOption) (*legacyv1beta1.NetworkNeighborhoodList, error) {
 	if c.protoClient == nil {
 		return nil, fmt.Errorf("client is not connected")
 	}
@@ -611,14 +612,14 @@ func (c *StorageClient) ListNetworkNeighborhoods(ctx context.Context, namespace 
 	}
 
 	// Convert pointer slice to value slice for NetworkNeighborhoodList
-	items := make([]v1beta1.NetworkNeighborhood, len(resp.NetworkNeighborhoods))
+	items := make([]legacyv1beta1.NetworkNeighborhood, len(resp.NetworkNeighborhoods))
 	for i, p := range resp.NetworkNeighborhoods {
 		if p != nil {
 			items[i] = *p
 		}
 	}
 
-	list := &v1beta1.NetworkNeighborhoodList{
+	list := &legacyv1beta1.NetworkNeighborhoodList{
 		Items: items,
 	}
 
