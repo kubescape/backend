@@ -6,6 +6,7 @@ package proto
 import (
 	fmt "fmt"
 	proto "github.com/gogo/protobuf/proto"
+	legacyv1beta1 "github.com/kubescape/backend/pkg/apis/softwarecomposition/v1beta1"
 	v1beta1 "github.com/kubescape/storage/pkg/apis/softwarecomposition/v1beta1"
 	math "math"
 )
@@ -291,9 +292,9 @@ type GetProfileResponse struct {
 	// Error code for programmatic error handling
 	ErrorCode ErrorCode `protobuf:"varint,3,opt,name=error_code,json=errorCode,proto3,enum=storageserver.v1.ErrorCode" json:"error_code,omitempty"`
 	// ApplicationProfile is populated when kind is "applicationProfile"
-	ApplicationProfile *v1beta1.ApplicationProfile `protobuf:"bytes,4,opt,name=application_profile,json=applicationProfile,proto3" json:"application_profile,omitempty"`
+	ApplicationProfile *legacyv1beta1.ApplicationProfile `protobuf:"bytes,4,opt,name=application_profile,json=applicationProfile,proto3" json:"application_profile,omitempty"`
 	// NetworkNeighborhood is populated when kind is "networkNeighborhood"
-	NetworkNeighborhood *v1beta1.NetworkNeighborhood `protobuf:"bytes,5,opt,name=network_neighborhood,json=networkNeighborhood,proto3" json:"network_neighborhood,omitempty"`
+	NetworkNeighborhood *legacyv1beta1.NetworkNeighborhood `protobuf:"bytes,5,opt,name=network_neighborhood,json=networkNeighborhood,proto3" json:"network_neighborhood,omitempty"`
 	// ContainerProfile is populated when kind is "containerProfile"
 	ContainerProfile     *v1beta1.ContainerProfile `protobuf:"bytes,6,opt,name=container_profile,json=containerProfile,proto3" json:"container_profile,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
@@ -346,14 +347,14 @@ func (m *GetProfileResponse) GetErrorCode() ErrorCode {
 	return ErrorCode_ERROR_CODE_UNSPECIFIED
 }
 
-func (m *GetProfileResponse) GetApplicationProfile() *v1beta1.ApplicationProfile {
+func (m *GetProfileResponse) GetApplicationProfile() *legacyv1beta1.ApplicationProfile {
 	if m != nil {
 		return m.ApplicationProfile
 	}
 	return nil
 }
 
-func (m *GetProfileResponse) GetNetworkNeighborhood() *v1beta1.NetworkNeighborhood {
+func (m *GetProfileResponse) GetNetworkNeighborhood() *legacyv1beta1.NetworkNeighborhood {
 	if m != nil {
 		return m.NetworkNeighborhood
 	}
@@ -453,7 +454,7 @@ type ListApplicationProfilesResponse struct {
 	// Error code for programmatic error handling
 	ErrorCode ErrorCode `protobuf:"varint,3,opt,name=error_code,json=errorCode,proto3,enum=storageserver.v1.ErrorCode" json:"error_code,omitempty"`
 	// ApplicationProfiles list (Spec will be nil for each item)
-	ApplicationProfiles []*v1beta1.ApplicationProfile `protobuf:"bytes,4,rep,name=application_profiles,json=applicationProfiles,proto3" json:"application_profiles,omitempty"`
+	ApplicationProfiles []*legacyv1beta1.ApplicationProfile `protobuf:"bytes,4,rep,name=application_profiles,json=applicationProfiles,proto3" json:"application_profiles,omitempty"`
 	// Continue token for next page (empty if no more results)
 	Cont                 string   `protobuf:"bytes,5,opt,name=cont,proto3" json:"cont,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -506,7 +507,7 @@ func (m *ListApplicationProfilesResponse) GetErrorCode() ErrorCode {
 	return ErrorCode_ERROR_CODE_UNSPECIFIED
 }
 
-func (m *ListApplicationProfilesResponse) GetApplicationProfiles() []*v1beta1.ApplicationProfile {
+func (m *ListApplicationProfilesResponse) GetApplicationProfiles() []*legacyv1beta1.ApplicationProfile {
 	if m != nil {
 		return m.ApplicationProfiles
 	}
@@ -606,7 +607,7 @@ type ListNetworkNeighborhoodsResponse struct {
 	// Error code for programmatic error handling
 	ErrorCode ErrorCode `protobuf:"varint,3,opt,name=error_code,json=errorCode,proto3,enum=storageserver.v1.ErrorCode" json:"error_code,omitempty"`
 	// NetworkNeighborhoods list (Spec will be nil for each item)
-	NetworkNeighborhoods []*v1beta1.NetworkNeighborhood `protobuf:"bytes,4,rep,name=network_neighborhoods,json=networkNeighborhoods,proto3" json:"network_neighborhoods,omitempty"`
+	NetworkNeighborhoods []*legacyv1beta1.NetworkNeighborhood `protobuf:"bytes,4,rep,name=network_neighborhoods,json=networkNeighborhoods,proto3" json:"network_neighborhoods,omitempty"`
 	// Continue token for next page (empty if no more results)
 	Cont                 string   `protobuf:"bytes,5,opt,name=cont,proto3" json:"cont,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -659,7 +660,7 @@ func (m *ListNetworkNeighborhoodsResponse) GetErrorCode() ErrorCode {
 	return ErrorCode_ERROR_CODE_UNSPECIFIED
 }
 
-func (m *ListNetworkNeighborhoodsResponse) GetNetworkNeighborhoods() []*v1beta1.NetworkNeighborhood {
+func (m *ListNetworkNeighborhoodsResponse) GetNetworkNeighborhoods() []*legacyv1beta1.NetworkNeighborhood {
 	if m != nil {
 		return m.NetworkNeighborhoods
 	}

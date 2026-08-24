@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/armosec/armoapi-go/armotypes"
+	legacyv1beta1 "github.com/kubescape/backend/pkg/apis/softwarecomposition/v1beta1"
 	"github.com/kubescape/backend/pkg/client/v1/proto"
 	"github.com/kubescape/storage/pkg/apis/softwarecomposition/v1beta1"
 	"github.com/stretchr/testify/assert"
@@ -22,12 +23,12 @@ import (
 
 // Mock StorageServiceClient for testing
 type mockStorageServiceClient struct {
-	sendContainerProfileFunc     func(ctx context.Context, in *proto.SendContainerProfileRequest, opts ...grpc.CallOption) (*proto.SendContainerProfileResponse, error)
-	getProfileFunc               func(ctx context.Context, in *proto.GetProfileRequest, opts ...grpc.CallOption) (*proto.GetProfileResponse, error)
-	listApplicationProfilesFunc  func(ctx context.Context, in *proto.ListApplicationProfilesRequest, opts ...grpc.CallOption) (*proto.ListApplicationProfilesResponse, error)
-	listNetworkNeighborhoodsFunc func(ctx context.Context, in *proto.ListNetworkNeighborhoodsRequest, opts ...grpc.CallOption) (*proto.ListNetworkNeighborhoodsResponse, error)
-	putSBOMStreamFunc            func(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[proto.PutSBOMChunk, proto.PutSBOMResponse], error)
-	getSBOMStreamFunc            func(ctx context.Context, in *proto.GetSBOMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.GetSBOMChunk], error)
+	sendContainerProfileFunc       func(ctx context.Context, in *proto.SendContainerProfileRequest, opts ...grpc.CallOption) (*proto.SendContainerProfileResponse, error)
+	getProfileFunc                 func(ctx context.Context, in *proto.GetProfileRequest, opts ...grpc.CallOption) (*proto.GetProfileResponse, error)
+	listApplicationProfilesFunc    func(ctx context.Context, in *proto.ListApplicationProfilesRequest, opts ...grpc.CallOption) (*proto.ListApplicationProfilesResponse, error)
+	listNetworkNeighborhoodsFunc   func(ctx context.Context, in *proto.ListNetworkNeighborhoodsRequest, opts ...grpc.CallOption) (*proto.ListNetworkNeighborhoodsResponse, error)
+	putSBOMStreamFunc              func(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[proto.PutSBOMChunk, proto.PutSBOMResponse], error)
+	getSBOMStreamFunc              func(ctx context.Context, in *proto.GetSBOMRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.GetSBOMChunk], error)
 	sendContainerProfileStreamFunc func(ctx context.Context, opts ...grpc.CallOption) (grpc.ClientStreamingClient[proto.ContainerProfileChunk, proto.SendContainerProfileResponse], error)
 	getContainerProfileStreamFunc  func(ctx context.Context, in *proto.GetContainerProfileStreamRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[proto.GetContainerProfileStreamChunk], error)
 }
@@ -241,11 +242,11 @@ func TestStorageClient_GetProfile(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name         string
-		kind         armotypes.ProfileKind
-		namespace    string
-		profileName  string
-		region       string
+		name                   string
+		kind                   armotypes.ProfileKind
+		namespace              string
+		profileName            string
+		region                 string
 		cloudAccountIdentifier string
 	}{
 		{
@@ -312,7 +313,7 @@ func TestStorageClient_GetProfile(t *testing.T) {
 					case armotypes.ApplicationProfileKind:
 						return &proto.GetProfileResponse{
 							Success:            true,
-							ApplicationProfile: &v1beta1.ApplicationProfile{},
+							ApplicationProfile: &legacyv1beta1.ApplicationProfile{},
 						}, nil
 					case armotypes.ContainerProfileKind:
 						return &proto.GetProfileResponse{
@@ -322,7 +323,7 @@ func TestStorageClient_GetProfile(t *testing.T) {
 					default:
 						return &proto.GetProfileResponse{
 							Success:             true,
-							NetworkNeighborhood: &v1beta1.NetworkNeighborhood{},
+							NetworkNeighborhood: &legacyv1beta1.NetworkNeighborhood{},
 						}, nil
 					}
 				},
@@ -362,11 +363,11 @@ func TestStorageClient_ListApplicationProfiles(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name         string
-		namespace    string
-		limit        int64
-		cont         string
-		region       string
+		name                   string
+		namespace              string
+		limit                  int64
+		cont                   string
+		region                 string
 		cloudAccountIdentifier string
 		expectedLen            int
 	}{
@@ -400,9 +401,9 @@ func TestStorageClient_ListApplicationProfiles(t *testing.T) {
 					assert.Equal(t, tt.cont, in.Cont)
 					assert.Equal(t, tt.region, in.Region)
 					assert.Equal(t, tt.cloudAccountIdentifier, in.CloudAccountIdentifier)
-					profiles := make([]*v1beta1.ApplicationProfile, tt.expectedLen)
+					profiles := make([]*legacyv1beta1.ApplicationProfile, tt.expectedLen)
 					for i := range profiles {
-						profiles[i] = &v1beta1.ApplicationProfile{}
+						profiles[i] = &legacyv1beta1.ApplicationProfile{}
 					}
 					return &proto.ListApplicationProfilesResponse{
 						Success:             true,
@@ -425,11 +426,11 @@ func TestStorageClient_ListNetworkNeighborhoods(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name         string
-		namespace    string
-		limit        int64
-		cont         string
-		region       string
+		name                   string
+		namespace              string
+		limit                  int64
+		cont                   string
+		region                 string
 		cloudAccountIdentifier string
 		expectedLen            int
 	}{
@@ -463,9 +464,9 @@ func TestStorageClient_ListNetworkNeighborhoods(t *testing.T) {
 					assert.Equal(t, tt.cont, in.Cont)
 					assert.Equal(t, tt.region, in.Region)
 					assert.Equal(t, tt.cloudAccountIdentifier, in.CloudAccountIdentifier)
-					neighborhoods := make([]*v1beta1.NetworkNeighborhood, tt.expectedLen)
+					neighborhoods := make([]*legacyv1beta1.NetworkNeighborhood, tt.expectedLen)
 					for i := range neighborhoods {
-						neighborhoods[i] = &v1beta1.NetworkNeighborhood{}
+						neighborhoods[i] = &legacyv1beta1.NetworkNeighborhood{}
 					}
 					return &proto.ListNetworkNeighborhoodsResponse{
 						Success:              true,
@@ -671,11 +672,11 @@ type storageRoundTripServer struct {
 	// SBOM download config: returned from the next GetSBOMStream call.
 	// If serveExists is false the server closes the stream after the
 	// metadata chunk.
-	serveExists       bool
-	serveMetadata     *proto.SBOMMetadata
-	serveBytes        []byte
-	serveChunkSize    int // 0 → send the whole payload in one chunk
-	serveChunkDelay   time.Duration // sleep before each chunk; for timeout tests
+	serveExists     bool
+	serveMetadata   *proto.SBOMMetadata
+	serveBytes      []byte
+	serveChunkSize  int           // 0 → send the whole payload in one chunk
+	serveChunkDelay time.Duration // sleep before each chunk; for timeout tests
 
 	// ContainerProfile upload state: captured from the most recent
 	// SendContainerProfileStream call.
