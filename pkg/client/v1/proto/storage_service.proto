@@ -76,6 +76,12 @@ service StorageService {
   // is false, the server closes the stream after the metadata chunk.
   // Otherwise subsequent chunks carry the marshaled SBOMSyft bytes.
   rpc GetSBOMStream(GetSBOMRequest) returns (stream GetSBOMChunk);
+
+  // PatchSBOMAnnotations updates only the annotations of an existing SBOM row,
+  // atomically and without rewriting the blob. Merge-patch semantics: keys in
+  // `set` are added or overwritten, keys in `delete` are removed, all other
+  // annotations are left untouched. Not-found if the row does not exist.
+  rpc PatchSBOMAnnotations(PatchSBOMAnnotationsRequest) returns (PatchSBOMAnnotationsResponse);
 }
 
 // SendContainerProfileRequest contains the container profile to be stored
@@ -397,3 +403,21 @@ message SBOMMetadata {
   // downloading and unmarshaling the full SBOM blob.
   map<string, string> annotations = 7;
 }
+
+// PatchSBOMAnnotationsRequest updates only annotations on an existing SBOM row.
+// customer_guid is sent via gRPC metadata headers.
+message PatchSBOMAnnotationsRequest {
+  string image_digest = 1;
+  string syft_version = 2;
+  map<string, string> set = 3;
+  repeated string delete = 4;
+}
+
+// PatchSBOMAnnotationsResponse returns the post-merge SBOM metadata.
+message PatchSBOMAnnotationsResponse {
+  bool success = 1;
+  string error_message = 2;
+  ErrorCode error_code = 3;
+  SBOMMetadata sbom_metadata = 4;
+}
+

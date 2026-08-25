@@ -809,6 +809,42 @@ func (r *sbomStreamReader) Close() error {
 	return nil
 }
 
+// PatchSBOMAnnotations updates only the annotations of an existing SBOM row,
+// atomically and without rewriting the S3 blob. Merge-patch semantics: keys in
+// `set` are added or overwritten, keys in `del` are removed, all other
+// annotations are left untouched. Returns the post-merge SBOMMetadata on success.
+func (c *StorageClient) PatchSBOMAnnotations(ctx context.Context, imageDigest, syftVersion string, set map[string]string, del []string) (*proto.SBOMMetadata, error) {
+	if c.protoClient == nil {
+		return nil, fmt.Errorf("client is not connected")
+	}
+
+	req := &proto.PatchSBOMAnnotationsRequest{
+		ImageDigest: imageDigest,
+		SyftVersion: syftVersion,
+		Set:         set,
+		Delete:      del,
+	}
+
+	ctx = c.withMetadata(ctx)
+
+	if c.callTimeout != nil && *c.callTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, *c.callTimeout)
+		defer cancel()
+	}
+
+	resp, err := c.protoClient.PatchSBOMAnnotations(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if !resp.Success {
+		return nil, fmt.Errorf("failed to patch SBOM annotations: %s (code: %v)", resp.ErrorMessage, resp.ErrorCode)
+	}
+
+	return resp.SbomMetadata, nil
+}
+
 // MarshalSBOM marshals a typed SBOMSyft to its proto wire bytes and
 // returns a reader over them, ready for PutSBOM. The full marshaled blob
 // is held in memory; for very large SBOMs callers may prefer to write
