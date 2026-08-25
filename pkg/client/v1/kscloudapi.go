@@ -348,12 +348,22 @@ func (api *KSCloudAPI) ListControls() ([]string, error) {
 
 // SubmitReport uploads a posture report.
 func (api *KSCloudAPI) SubmitReport(report *PostureReport) (string, error) {
+	return api.SubmitReportWithContext(context.Background(), report)
+}
+
+// SubmitReportWithContext uploads a posture report with the provided context.
+//
+// Cancelling the context aborts the upload that is already in flight, instead of
+// waiting for the client timeout.
+func (api *KSCloudAPI) SubmitReportWithContext(ctx context.Context, report *PostureReport, opts ...RequestOption) (string, error) {
 	jazon, err := json.Marshal(report)
 	if err != nil {
 		return "", err
 	}
 
-	rdr, _, err := api.post(api.postReportURL(report.ClusterName, report.ReportID), jazon, WithContentJSON(true))
+	opts = append([]RequestOption{WithContext(ctx), WithContentJSON(true)}, opts...)
+
+	rdr, _, err := api.post(api.postReportURL(report.ClusterName, report.ReportID), jazon, opts...)
 	if err != nil {
 		return "", err
 	}
