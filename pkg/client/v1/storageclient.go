@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -19,6 +20,23 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
+
+// ErrProfileUnchanged is returned by GetContainerProfileStream when the caller supplied a
+// known checksum via WithProfileKnownChecksum and the server reported that its stored
+// ContainerProfile still matches it. No profile is returned: the caller must keep the copy
+// it already holds. Match it with errors.Is.
+var ErrProfileUnchanged = errors.New("container profile unchanged")
+
+// ContainerProfileChecksumAnnotationKey is the ObjectMeta annotation under which
+// GetContainerProfileStream stamps the server-reported content checksum of a fetched
+// ContainerProfile, so callers can store it and present it back via
+// WithProfileKnownChecksum on a later fetch.
+//
+// STABLE CROSS-REPO CONTRACT: this exact string is read by consumers outside this
+// repository (armosec/private-node-agent's storage adapter, which re-keys it into
+// kubescape/node-agent's own vocabulary). Changing its value is a breaking change for
+// those consumers even though the Go symbol stays the same — do not rename the value.
+const ContainerProfileChecksumAnnotationKey = "backend.kubescape.io/container-profile-checksum"
 
 // sbomStreamChunkSize is the per-chunk byte budget used by PutSBOMStream
 // and GetSBOMStream. Set well below the default 4 MiB gRPC message limit
@@ -349,6 +367,7 @@ func (c *StorageClient) GetContainerProfileStream(ctx context.Context, namespace
 		Name:                   name,
 		Region:                 profileOpts.Region,
 		CloudAccountIdentifier: profileOpts.CloudAccountIdentifier,
+		KnownChecksum:          profileOpts.KnownChecksum,
 	}
 
 	// Note: we deliberately do NOT apply callTimeout here. Stream duration
@@ -356,6 +375,13 @@ func (c *StorageClient) GetContainerProfileStream(ctx context.Context, namespace
 	// chosen for short unary RPCs. Callers wanting a deadline should pass
 	// a ctx with their own.
 	ctx = c.withMetadata(ctx)
+
+	// The unchanged/error paths below return before the stream is drained to
+	// io.EOF, so tear the RPC down explicitly rather than leaving a half-read
+	// server stream open. Draining instead would defeat the point of the
+	// conditional fetch if a server sent blob chunks alongside unchanged=true.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	stream, err := c.protoClient.GetContainerProfileStream(ctx, req)
 	if err != nil {
@@ -374,6 +400,23 @@ func (c *StorageClient) GetContainerProfileStream(ctx context.Context, namespace
 	if !md.Success {
 		return nil, fmt.Errorf("failed to get container profile: %s (code: %v)", md.ErrorMessage, md.ErrorCode)
 	}
+	// Checked before Exists: unchanged implies the row exists, but a server that
+	// implements only unchanged may leave exists at its proto3 default, which the
+	// branch below would turn into a spurious not-found.
+	if md.Unchanged {
+		if profileOpts.KnownChecksum == "" {
+			// Protocol violation: the server claims a match against a validator we
+			// never sent. Never surface this as ErrProfileUnchanged — a caller
+			// treating it as the sentinel would pin its cache on no evidence at all.
+			return nil, fmt.Errorf("server reported unchanged for an unconditional request (namespace=%s name=%s)", namespace, name)
+		}
+		// Returns before the drain loop; the deferred cancel above tears the
+		// half-read stream down.
+		return nil, ErrProfileUnchanged
+	}
+	// Note: this is a plain fmt.Errorf, not an apierrors-shaped NotFound, so
+	// apierrors.IsNotFound never matches on this path. Pre-existing behavior,
+	// deliberately left unchanged here.
 	if !md.Exists {
 		return nil, fmt.Errorf("container profile %s/%s not found", namespace, name)
 	}
@@ -396,6 +439,14 @@ func (c *StorageClient) GetContainerProfileStream(ctx context.Context, namespace
 	profile := &v1beta1.ContainerProfile{}
 	if err := profile.Unmarshal(buf); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal ContainerProfile: %w", err)
+	}
+	// The ProfileClient-shaped signature has no other channel for the checksum,
+	// so stamp it on the object for callers that want to store it as a validator.
+	if md.Checksum != "" {
+		if profile.Annotations == nil {
+			profile.Annotations = map[string]string{}
+		}
+		profile.Annotations[ContainerProfileChecksumAnnotationKey] = md.Checksum
 	}
 	return profile, nil
 }

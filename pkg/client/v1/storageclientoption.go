@@ -75,6 +75,7 @@ type ProfileOption func(*ProfileOptions)
 type ProfileOptions struct {
 	Region                 string
 	CloudAccountIdentifier string
+	KnownChecksum          string
 }
 
 // WithProfileRegion sets the region for non-k8s scoped resources
@@ -91,11 +92,23 @@ func WithProfileCloudAccountIdentifier(cloudAccountIdentifier string) ProfileOpt
 	}
 }
 
+// WithProfileKnownChecksum sets the content checksum of the profile the caller already holds.
+// It is advisory: an empty value (the default) requests the body unconditionally, and a server
+// that does not understand it streams the body as before. When the server recognises it and the
+// checksums match, GetContainerProfileStream returns ErrProfileUnchanged instead of a profile.
+// Only GetContainerProfileStream honours this option.
+func WithProfileKnownChecksum(checksum string) ProfileOption {
+	return func(o *ProfileOptions) {
+		o.KnownChecksum = checksum
+	}
+}
+
 // profileOptionsWithDefaults applies profile query options
 func profileOptionsWithDefaults(opts []ProfileOption) *ProfileOptions {
 	options := &ProfileOptions{
 		Region:                 "",
 		CloudAccountIdentifier: "",
+		KnownChecksum:          "",
 	}
 
 	for _, apply := range opts {

@@ -274,6 +274,16 @@ message GetContainerProfileStreamRequest {
 
   // CloudAccountIdentifier of the resource (non-k8s scope identifier).
   string cloud_account_identifier = 4;
+
+  // KnownChecksum is the content checksum of the ContainerProfile the
+  // client already holds. It is purely advisory: an empty value means
+  // "send the body unconditionally", and a server that does not
+  // understand the field simply ignores it and streams the body as
+  // before. When the server recognises it and the stored profile's
+  // checksum matches, the server may answer with
+  // GetContainerProfileStreamChunkMetadata.unchanged = true and send no
+  // blob chunks.
+  string known_checksum = 5;
 }
 
 // GetContainerProfileStreamChunk is a single chunk of a streamed
@@ -298,6 +308,19 @@ message GetContainerProfileStreamChunkMetadata {
 
   // exists indicates whether a ContainerProfile row was found.
   bool exists = 4;
+
+  // unchanged is set only in reply to a request that carried a non-empty
+  // known_checksum which matched the stored profile's current checksum.
+  // When true, NO blob chunks follow and exists is implied — a client
+  // must therefore evaluate unchanged before exists, since a server that
+  // implements only unchanged may leave exists at its proto3 default.
+  bool unchanged = 5;
+
+  // checksum is the stored profile's current content checksum. It is
+  // populated on EVERY successful response, not only on a match, so a
+  // client can refresh its stored validator after an ordinary body
+  // fetch. Empty when the server does not compute checksums.
+  string checksum = 6;
 }
 
 // PutSBOMResponse indicates success or failure of the operation. S3 +
