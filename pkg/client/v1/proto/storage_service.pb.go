@@ -916,7 +916,15 @@ type GetContainerProfileStreamChunkMetadata struct {
 	// checksum is the stored profile's current content checksum. It is
 	// populated on EVERY successful response, not only on a match, so a
 	// client can refresh its stored validator after an ordinary body
-	// fetch. Empty when the server does not compute checksums.
+	// fetch.
+	//
+	// A server that sets unchanged MUST also populate checksum on every
+	// successful response, not just on a match: a client only ever learns a
+	// checksum from this field, so a server that supports unchanged but
+	// leaves checksum empty makes every request unconditional forever, with
+	// no way for an operator to notice. A server with no checksum support at
+	// all should leave both unchanged and checksum unset, which unambiguously
+	// signals "not supported" rather than a silently permanent cache miss.
 	Checksum             string   `protobuf:"bytes,6,opt,name=checksum,proto3" json:"checksum,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`

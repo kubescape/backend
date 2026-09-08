@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"strings"
 	"testing"
 
 	gogoproto "github.com/gogo/protobuf/proto"
@@ -183,6 +184,34 @@ func TestGetContainerProfileStream_Unchanged(t *testing.T) {
 		assert.Contains(t, err.Error(), "nginx-abc")
 	})
 
+	t.Run("unchanged with a contradicting checksum is a loud non-sentinel error", func(t *testing.T) {
+		// The server claims a match against "abc" but hands back "xyz" as the
+		// stored checksum — a row mixup or a stale server-side cache could
+		// produce exactly this. It must not be trusted as ErrProfileUnchanged.
+		client, _ := newCPStreamClient(t,
+			cpMetaChunk(&proto.GetContainerProfileStreamChunkMetadata{Success: true, Unchanged: true, Exists: true, Checksum: "xyz"}),
+		)
+		profile, err := client.GetContainerProfileStream(context.Background(), "default", "nginx-abc",
+			WithProfileKnownChecksum("abc"))
+
+		require.Error(t, err)
+		assert.Nil(t, profile)
+		assert.False(t, errors.Is(err, ErrProfileUnchanged),
+			"a contradicting checksum must never be reported as the sentinel")
+		assert.Contains(t, err.Error(), "different checksum")
+	})
+
+	t.Run("unchanged with a matching checksum echoed back is the sentinel", func(t *testing.T) {
+		// The server MAY echo the same checksum it was sent; that agrees, not
+		// contradicts, and must still resolve to the sentinel.
+		client, _ := newCPStreamClient(t,
+			cpMetaChunk(&proto.GetContainerProfileStreamChunkMetadata{Success: true, Unchanged: true, Exists: true, Checksum: "abc"}),
+		)
+		_, err := client.GetContainerProfileStream(context.Background(), "default", "nginx-abc",
+			WithProfileKnownChecksum("abc"))
+		assert.ErrorIs(t, err, ErrProfileUnchanged)
+	})
+
 	t.Run("half-read stream is torn down on the early return", func(t *testing.T) {
 		client, rec := newCPStreamClient(t,
 			cpMetaChunk(&proto.GetContainerProfileStreamChunkMetadata{Success: true, Unchanged: true, Checksum: "abc"}),
@@ -255,6 +284,43 @@ func TestGetContainerProfileStream_NormalPath(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, map[string]string{"kubescape.io/status": "completed"}, got.Annotations)
 		assert.NotContains(t, got.Annotations, ContainerProfileChecksumAnnotationKey)
+	})
+
+	t.Run("exists=true with an empty body is not stamped", func(t *testing.T) {
+		// Before checksum stamping existed, this shape (a successful metadata
+		// chunk claiming exists=true but zero blob chunks) unmarshaled into a
+		// blank profile and self-healed on the caller's next fetch, since
+		// nothing marked it as trustworthy. Stamping a checksum on it would
+		// instead validate the blank result, and every later conditional
+		// fetch would answer "unchanged" against it forever.
+		client, _ := newCPStreamClient(t,
+			cpMetaChunk(&proto.GetContainerProfileStreamChunkMetadata{Success: true, Exists: true, Checksum: "abc"}),
+		)
+		got, err := client.GetContainerProfileStream(context.Background(), "default", "nginx-abc")
+		require.NoError(t, err, "the empty-body shape itself is unchanged: still not an error")
+		assert.Nil(t, got.Annotations, "must not stamp a checksum onto a blank/unmarshaled-from-nothing profile")
+	})
+
+	t.Run("an implausibly long checksum is dropped rather than stamped", func(t *testing.T) {
+		huge := strings.Repeat("a", maxStampedChecksumLength+1)
+		client, _ := newCPStreamClient(t,
+			cpMetaChunk(&proto.GetContainerProfileStreamChunkMetadata{Success: true, Exists: true, Checksum: huge}),
+			&proto.GetContainerProfileStreamChunk{BlobChunk: payload},
+		)
+		got, err := client.GetContainerProfileStream(context.Background(), "default", "nginx-abc")
+		require.NoError(t, err, "an oversized checksum degrades the optimization, not the fetch itself")
+		assert.Nil(t, got.Annotations, "must not stamp a checksum long enough to blow a later annotations write")
+	})
+
+	t.Run("a checksum at the length bound is still stamped", func(t *testing.T) {
+		exactlyMax := strings.Repeat("a", maxStampedChecksumLength)
+		client, _ := newCPStreamClient(t,
+			cpMetaChunk(&proto.GetContainerProfileStreamChunkMetadata{Success: true, Exists: true, Checksum: exactlyMax}),
+			&proto.GetContainerProfileStreamChunk{BlobChunk: payload},
+		)
+		got, err := client.GetContainerProfileStream(context.Background(), "default", "nginx-abc")
+		require.NoError(t, err)
+		assert.Equal(t, exactlyMax, got.Annotations[ContainerProfileChecksumAnnotationKey])
 	})
 
 	t.Run("not-found is still reported when the row is absent", func(t *testing.T) {

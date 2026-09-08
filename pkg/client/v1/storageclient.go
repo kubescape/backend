@@ -27,6 +27,12 @@ import (
 // it already holds. Match it with errors.Is.
 var ErrProfileUnchanged = errors.New("container profile unchanged")
 
+// maxStampedChecksumLength bounds the checksum GetContainerProfileStream will stamp
+// onto a fetched profile's annotations. A real checksum is a few dozen bytes; this
+// exists so a misbehaving server can't hand back an oversized value that later fails
+// Kubernetes' combined-annotations-size validation on write-back.
+const maxStampedChecksumLength = 256
+
 // ContainerProfileChecksumAnnotationKey is the ObjectMeta annotation under which
 // GetContainerProfileStream stamps the server-reported content checksum of a fetched
 // ContainerProfile, so callers can store it and present it back via
@@ -293,6 +299,30 @@ func (c *StorageClient) SendContainerProfile(ctx context.Context, profile *v1bet
 	return c.protoClient.SendContainerProfile(ctx, req)
 }
 
+// marshalContainerProfileForSend marshals profile for SendContainerProfileStream,
+// stripping ContainerProfileChecksumAnnotationKey if present rather than mutating the
+// caller's object. GetContainerProfileStream stamps that annotation on fetched
+// profiles as the only channel available to hand a checksum back to the caller; if a
+// Get → mutate → Send round trip sent it straight back to the server, it would become
+// part of the content the server checksums, and the checksum the client just cached
+// as its validator would never match again — permanently defeating the mechanism this
+// annotation exists to support. Callers are not expected to persist this key
+// themselves, but nothing stops one from round-tripping the object it got back.
+func marshalContainerProfileForSend(profile *v1beta1.ContainerProfile) ([]byte, error) {
+	if _, ok := profile.Annotations[ContainerProfileChecksumAnnotationKey]; !ok {
+		return profile.Marshal()
+	}
+	clone := *profile
+	clone.Annotations = make(map[string]string, len(profile.Annotations))
+	for k, v := range profile.Annotations {
+		if k == ContainerProfileChecksumAnnotationKey {
+			continue
+		}
+		clone.Annotations[k] = v
+	}
+	return clone.Marshal()
+}
+
 // SendContainerProfileStream is the streaming replacement for
 // SendContainerProfile. The profile is marshaled and sent to the server
 // in chunks of sbomStreamChunkSize. Use this whenever you might write a
@@ -305,7 +335,7 @@ func (c *StorageClient) SendContainerProfileStream(ctx context.Context, profile 
 		return nil, fmt.Errorf("profile is nil")
 	}
 
-	payload, err := profile.Marshal()
+	payload, err := marshalContainerProfileForSend(profile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal ContainerProfile: %w", err)
 	}
@@ -410,6 +440,15 @@ func (c *StorageClient) GetContainerProfileStream(ctx context.Context, namespace
 			// treating it as the sentinel would pin its cache on no evidence at all.
 			return nil, fmt.Errorf("server reported unchanged for an unconditional request (namespace=%s name=%s)", namespace, name)
 		}
+		if md.Checksum != "" && md.Checksum != profileOpts.KnownChecksum {
+			// Contradiction, not just an empty validator: the server says "unchanged"
+			// but hands back a checksum that disagrees with the one we sent. A row
+			// mixup or a stale server-side cache could produce exactly this. Trusting
+			// it silently would pin the caller on a wrong validator indefinitely —
+			// the same hazard class as the empty-validator case above, just harder to
+			// notice because the response otherwise looks well-formed.
+			return nil, fmt.Errorf("server reported unchanged but returned a different checksum (namespace=%s name=%s)", namespace, name)
+		}
 		// Returns before the drain loop; the deferred cancel above tears the
 		// half-read stream down.
 		return nil, ErrProfileUnchanged
@@ -442,7 +481,15 @@ func (c *StorageClient) GetContainerProfileStream(ctx context.Context, namespace
 	}
 	// The ProfileClient-shaped signature has no other channel for the checksum,
 	// so stamp it on the object for callers that want to store it as a validator.
-	if md.Checksum != "" {
+	//
+	// Only stamp on a genuinely non-empty body. exists=true with zero blob chunks
+	// unmarshals successfully into a blank profile (empty Name/Namespace) — that
+	// used to self-heal on the caller's next fetch, since nothing marked it as
+	// trustworthy. Stamping a checksum on it would instead validate the blank
+	// result, and every later conditional fetch would answer "unchanged" against
+	// it forever. Also drop an implausibly long checksum rather than stamp it —
+	// see maxStampedChecksumLength.
+	if md.Checksum != "" && len(buf) > 0 && len(md.Checksum) <= maxStampedChecksumLength {
 		if profile.Annotations == nil {
 			profile.Annotations = map[string]string{}
 		}
