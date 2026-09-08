@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -19,6 +20,47 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
+
+// ErrProfileUnchanged is returned by GetContainerProfileStream when the caller supplied a
+// known checksum via WithProfileKnownChecksum and the server reported that its stored
+// ContainerProfile still matches it. No profile is returned: the caller must keep the copy
+// it already holds. Match it with errors.Is.
+var ErrProfileUnchanged = errors.New("container profile unchanged")
+
+// maxStampedChecksumLength bounds the checksum GetContainerProfileStream will stamp
+// onto a fetched profile's annotations. A real checksum is a few dozen bytes; this
+// exists so a misbehaving server can't hand back an oversized value that later fails
+// Kubernetes' combined-annotations-size validation on write-back.
+const maxStampedChecksumLength = 256
+
+// ChecksumAlgorithmSHA256Prefix is the required prefix for every value carried in
+// GetContainerProfileStreamChunkMetadata.checksum and
+// GetContainerProfileStreamRequest.known_checksum: "sha256:<64 lowercase hex
+// characters>". Tagging the algorithm costs nothing now and is the only thing that
+// makes a future change of hash function a detectable format change instead of a
+// silent semantic one — two differently-hashed values could otherwise coincidentally
+// look like a match or a mismatch for the wrong reason.
+//
+// This is the canonical, kubescape/backend-owned definition of the convention; other
+// repositories producing or comparing these values (armosec/postgres-connector,
+// armosec/cadashboardbe) are expected to depend on this constant rather than
+// hardcoding the string. As of this change, no producer in this pipeline emits a
+// prefixed value yet — GetContainerProfileStream will not stamp a checksum that
+// lacks it (see maxStampedChecksumLength's sibling check), which degrades the
+// optimization to inert rather than failing the fetch, exactly like an oversized
+// checksum. Producers are expected to adopt the prefix in a follow-up change.
+const ChecksumAlgorithmSHA256Prefix = "sha256:"
+
+// ContainerProfileChecksumAnnotationKey is the ObjectMeta annotation under which
+// GetContainerProfileStream stamps the server-reported content checksum of a fetched
+// ContainerProfile, so callers can store it and present it back via
+// WithProfileKnownChecksum on a later fetch.
+//
+// STABLE CROSS-REPO CONTRACT: this exact string is read by consumers outside this
+// repository (armosec/private-node-agent's storage adapter, which re-keys it into
+// kubescape/node-agent's own vocabulary). Changing its value is a breaking change for
+// those consumers even though the Go symbol stays the same — do not rename the value.
+const ContainerProfileChecksumAnnotationKey = "backend.kubescape.io/container-profile-checksum"
 
 // sbomStreamChunkSize is the per-chunk byte budget used by PutSBOMStream
 // and GetSBOMStream. Set well below the default 4 MiB gRPC message limit
@@ -275,6 +317,30 @@ func (c *StorageClient) SendContainerProfile(ctx context.Context, profile *v1bet
 	return c.protoClient.SendContainerProfile(ctx, req)
 }
 
+// marshalContainerProfileForSend marshals profile for SendContainerProfileStream,
+// stripping ContainerProfileChecksumAnnotationKey if present rather than mutating the
+// caller's object. GetContainerProfileStream stamps that annotation on fetched
+// profiles as the only channel available to hand a checksum back to the caller; if a
+// Get → mutate → Send round trip sent it straight back to the server, it would become
+// part of the content the server checksums, and the checksum the client just cached
+// as its validator would never match again — permanently defeating the mechanism this
+// annotation exists to support. Callers are not expected to persist this key
+// themselves, but nothing stops one from round-tripping the object it got back.
+func marshalContainerProfileForSend(profile *v1beta1.ContainerProfile) ([]byte, error) {
+	if _, ok := profile.Annotations[ContainerProfileChecksumAnnotationKey]; !ok {
+		return profile.Marshal()
+	}
+	clone := *profile
+	clone.Annotations = make(map[string]string, len(profile.Annotations))
+	for k, v := range profile.Annotations {
+		if k == ContainerProfileChecksumAnnotationKey {
+			continue
+		}
+		clone.Annotations[k] = v
+	}
+	return clone.Marshal()
+}
+
 // SendContainerProfileStream is the streaming replacement for
 // SendContainerProfile. The profile is marshaled and sent to the server
 // in chunks of sbomStreamChunkSize. Use this whenever you might write a
@@ -287,7 +353,7 @@ func (c *StorageClient) SendContainerProfileStream(ctx context.Context, profile 
 		return nil, fmt.Errorf("profile is nil")
 	}
 
-	payload, err := profile.Marshal()
+	payload, err := marshalContainerProfileForSend(profile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal ContainerProfile: %w", err)
 	}
@@ -349,6 +415,7 @@ func (c *StorageClient) GetContainerProfileStream(ctx context.Context, namespace
 		Name:                   name,
 		Region:                 profileOpts.Region,
 		CloudAccountIdentifier: profileOpts.CloudAccountIdentifier,
+		KnownChecksum:          profileOpts.KnownChecksum,
 	}
 
 	// Note: we deliberately do NOT apply callTimeout here. Stream duration
@@ -356,6 +423,13 @@ func (c *StorageClient) GetContainerProfileStream(ctx context.Context, namespace
 	// chosen for short unary RPCs. Callers wanting a deadline should pass
 	// a ctx with their own.
 	ctx = c.withMetadata(ctx)
+
+	// The unchanged/error paths below return before the stream is drained to
+	// io.EOF, so tear the RPC down explicitly rather than leaving a half-read
+	// server stream open. Draining instead would defeat the point of the
+	// conditional fetch if a server sent blob chunks alongside unchanged=true.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	stream, err := c.protoClient.GetContainerProfileStream(ctx, req)
 	if err != nil {
@@ -374,6 +448,32 @@ func (c *StorageClient) GetContainerProfileStream(ctx context.Context, namespace
 	if !md.Success {
 		return nil, fmt.Errorf("failed to get container profile: %s (code: %v)", md.ErrorMessage, md.ErrorCode)
 	}
+	// Checked before Exists: unchanged implies the row exists, but a server that
+	// implements only unchanged may leave exists at its proto3 default, which the
+	// branch below would turn into a spurious not-found.
+	if md.Unchanged {
+		if profileOpts.KnownChecksum == "" {
+			// Protocol violation: the server claims a match against a validator we
+			// never sent. Never surface this as ErrProfileUnchanged — a caller
+			// treating it as the sentinel would pin its cache on no evidence at all.
+			return nil, fmt.Errorf("server reported unchanged for an unconditional request (namespace=%s name=%s)", namespace, name)
+		}
+		if md.Checksum != "" && md.Checksum != profileOpts.KnownChecksum {
+			// Contradiction, not just an empty validator: the server says "unchanged"
+			// but hands back a checksum that disagrees with the one we sent. A row
+			// mixup or a stale server-side cache could produce exactly this. Trusting
+			// it silently would pin the caller on a wrong validator indefinitely —
+			// the same hazard class as the empty-validator case above, just harder to
+			// notice because the response otherwise looks well-formed.
+			return nil, fmt.Errorf("server reported unchanged but returned a different checksum (namespace=%s name=%s)", namespace, name)
+		}
+		// Returns before the drain loop; the deferred cancel above tears the
+		// half-read stream down.
+		return nil, ErrProfileUnchanged
+	}
+	// Note: this is a plain fmt.Errorf, not an apierrors-shaped NotFound, so
+	// apierrors.IsNotFound never matches on this path. Pre-existing behavior,
+	// deliberately left unchanged here.
 	if !md.Exists {
 		return nil, fmt.Errorf("container profile %s/%s not found", namespace, name)
 	}
@@ -396,6 +496,27 @@ func (c *StorageClient) GetContainerProfileStream(ctx context.Context, namespace
 	profile := &v1beta1.ContainerProfile{}
 	if err := profile.Unmarshal(buf); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal ContainerProfile: %w", err)
+	}
+	// The ProfileClient-shaped signature has no other channel for the checksum,
+	// so stamp it on the object for callers that want to store it as a validator.
+	//
+	// Only stamp on a genuinely non-empty body. exists=true with zero blob chunks
+	// unmarshals successfully into a blank profile (empty Name/Namespace) — that
+	// used to self-heal on the caller's next fetch, since nothing marked it as
+	// trustworthy. Stamping a checksum on it would instead validate the blank
+	// result, and every later conditional fetch would answer "unchanged" against
+	// it forever. Also drop an implausibly long checksum rather than stamp it —
+	// see maxStampedChecksumLength — and require the algorithm prefix (see
+	// ChecksumAlgorithmSHA256Prefix): none of this pipeline's producers emit it
+	// yet, so this currently keeps the optimization inert rather than trusting an
+	// unversioned value, exactly like the length bound above.
+	if md.Checksum != "" && len(buf) > 0 &&
+		len(md.Checksum) <= maxStampedChecksumLength &&
+		strings.HasPrefix(md.Checksum, ChecksumAlgorithmSHA256Prefix) {
+		if profile.Annotations == nil {
+			profile.Annotations = map[string]string{}
+		}
+		profile.Annotations[ContainerProfileChecksumAnnotationKey] = md.Checksum
 	}
 	return profile, nil
 }

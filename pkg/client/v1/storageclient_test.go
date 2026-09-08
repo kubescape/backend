@@ -687,6 +687,7 @@ type storageRoundTripServer struct {
 	cpServeExists    bool
 	cpServeBytes     []byte
 	cpServeChunkSize int
+	cpServeChecksum  string
 }
 
 func (s *storageRoundTripServer) PutSBOMStream(stream grpc.ClientStreamingServer[proto.PutSBOMChunk, proto.PutSBOMResponse]) error {
@@ -781,12 +782,14 @@ func (s *storageRoundTripServer) GetContainerProfileStream(req *proto.GetContain
 	exists := s.cpServeExists
 	payload := s.cpServeBytes
 	chunkSize := s.cpServeChunkSize
+	checksum := s.cpServeChecksum
 	s.mu.Unlock()
 
 	first := &proto.GetContainerProfileStreamChunk{
 		Metadata: &proto.GetContainerProfileStreamChunkMetadata{
-			Success: true,
-			Exists:  exists,
+			Success:  true,
+			Exists:   exists,
+			Checksum: checksum,
 		},
 	}
 	if err := stream.Send(first); err != nil {
@@ -1109,6 +1112,54 @@ func TestStorageClient_ContainerProfileStreamRoundTrip(t *testing.T) {
 		_, err := client.GetContainerProfileStream(context.Background(), "default", "missing")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "not found")
+	})
+
+	t.Run("a Get-then-Send round trip never persists the stamped checksum annotation", func(t *testing.T) {
+		// Real regression shape: fetch a profile (which stamps
+		// ContainerProfileChecksumAnnotationKey as the only channel back
+		// through the ProfileClient-shaped signature), then send that same
+		// object back unmodified, as a caller doing a read-modify-write might.
+		// If the stamp round-trips into storage, it becomes part of what the
+		// server checksums next time, and the client's own cached validator
+		// never matches again.
+		rtSrv, client, cleanup := startBufconnStorageServer(t)
+		defer cleanup()
+
+		original := sampleContainerProfile()
+		payload, err := original.Marshal()
+		require.NoError(t, err)
+		rtSrv.cpServeExists = true
+		rtSrv.cpServeBytes = payload
+		checksum := ChecksumAlgorithmSHA256Prefix + "abc"
+		rtSrv.cpServeChecksum = checksum
+
+		fetched, err := client.GetContainerProfileStream(context.Background(), original.Namespace, original.Name)
+		require.NoError(t, err)
+		require.Equal(t, checksum, fetched.Annotations[ContainerProfileChecksumAnnotationKey], "sanity: the stamp is actually present before Send")
+
+		resp, err := client.SendContainerProfileStream(context.Background(), fetched)
+		require.NoError(t, err)
+		assert.True(t, resp.Success)
+
+		got := &v1beta1.ContainerProfile{}
+		require.NoError(t, got.Unmarshal(rtSrv.cpReceivedBytes))
+		assert.NotContains(t, got.Annotations, ContainerProfileChecksumAnnotationKey,
+			"the stamp must never reach the wire on a Send")
+
+		// The caller's own object must be untouched — marshalContainerProfileForSend
+		// must not mutate the map it was handed.
+		assert.Equal(t, checksum, fetched.Annotations[ContainerProfileChecksumAnnotationKey],
+			"stripping for the wire must not mutate the caller's in-memory object")
+	})
+
+	t.Run("marshalContainerProfileForSend leaves a profile with no stamp untouched", func(t *testing.T) {
+		cp := sampleContainerProfile()
+		want, err := cp.Marshal()
+		require.NoError(t, err)
+
+		got, err := marshalContainerProfileForSend(cp)
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
 	})
 }
 

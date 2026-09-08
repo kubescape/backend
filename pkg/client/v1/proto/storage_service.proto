@@ -274,6 +274,22 @@ message GetContainerProfileStreamRequest {
 
   // CloudAccountIdentifier of the resource (non-k8s scope identifier).
   string cloud_account_identifier = 4;
+
+  // KnownChecksum is the content checksum of the ContainerProfile the
+  // client already holds. It is purely advisory: an empty value means
+  // "send the body unconditionally", and a server that does not
+  // understand the field simply ignores it and streams the body as
+  // before. When the server recognises it and the stored profile's
+  // checksum matches, the server may answer with
+  // GetContainerProfileStreamChunkMetadata.unchanged = true and send no
+  // blob chunks.
+  //
+  // When non-empty, the value MUST be algorithm-tagged as
+  // "sha256:<64 lowercase hex characters>" — see
+  // GetContainerProfileStreamChunkMetadata.checksum for why. A value the
+  // client learned from an older, unprefixed response should not be sent
+  // unprefixed; treat it the same as not having a known checksum.
+  string known_checksum = 5;
 }
 
 // GetContainerProfileStreamChunk is a single chunk of a streamed
@@ -298,6 +314,35 @@ message GetContainerProfileStreamChunkMetadata {
 
   // exists indicates whether a ContainerProfile row was found.
   bool exists = 4;
+
+  // unchanged is set only in reply to a request that carried a non-empty
+  // known_checksum which matched the stored profile's current checksum.
+  // When true, NO blob chunks follow and exists is implied — a client
+  // must therefore evaluate unchanged before exists, since a server that
+  // implements only unchanged may leave exists at its proto3 default.
+  bool unchanged = 5;
+
+  // checksum is the stored profile's current content checksum. It is
+  // populated on EVERY successful response, not only on a match, so a
+  // client can refresh its stored validator after an ordinary body
+  // fetch.
+  //
+  // A server that sets unchanged MUST also populate checksum on every
+  // successful response, not just on a match: a client only ever learns a
+  // checksum from this field, so a server that supports unchanged but
+  // leaves checksum empty makes every request unconditional forever, with
+  // no way for an operator to notice. A server with no checksum support at
+  // all should leave both unchanged and checksum unset, which unambiguously
+  // signals "not supported" rather than a silently permanent cache miss.
+  //
+  // When non-empty, the value MUST be algorithm-tagged as
+  // "sha256:<64 lowercase hex characters>" (see
+  // kubescape/backend's ChecksumAlgorithmSHA256Prefix, the canonical
+  // definition of this convention). Tagging the algorithm costs nothing now
+  // and is the only thing that makes a future change of hash function a
+  // detectable format change rather than a silent semantic one. A client
+  // MUST NOT trust or re-present an unprefixed value as a validator.
+  string checksum = 6;
 }
 
 // PutSBOMResponse indicates success or failure of the operation. S3 +
