@@ -781,6 +781,12 @@ type GetContainerProfileStreamRequest struct {
 	// checksum matches, the server may answer with
 	// GetContainerProfileStreamChunkMetadata.unchanged = true and send no
 	// blob chunks.
+	//
+	// When non-empty, the value MUST be algorithm-tagged as
+	// "sha256:<64 lowercase hex characters>" — see
+	// GetContainerProfileStreamChunkMetadata.checksum for why. A value the
+	// client learned from an older, unprefixed response should not be sent
+	// unprefixed; treat it the same as not having a known checksum.
 	KnownChecksum        string   `protobuf:"bytes,5,opt,name=known_checksum,json=knownChecksum,proto3" json:"known_checksum,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -925,6 +931,14 @@ type GetContainerProfileStreamChunkMetadata struct {
 	// no way for an operator to notice. A server with no checksum support at
 	// all should leave both unchanged and checksum unset, which unambiguously
 	// signals "not supported" rather than a silently permanent cache miss.
+	//
+	// When non-empty, the value MUST be algorithm-tagged as
+	// "sha256:<64 lowercase hex characters>" (see
+	// kubescape/backend's ChecksumAlgorithmSHA256Prefix, the canonical
+	// definition of this convention). Tagging the algorithm costs nothing now
+	// and is the only thing that makes a future change of hash function a
+	// detectable format change rather than a silent semantic one. A client
+	// MUST NOT trust or re-present an unprefixed value as a validator.
 	Checksum             string   `protobuf:"bytes,6,opt,name=checksum,proto3" json:"checksum,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`

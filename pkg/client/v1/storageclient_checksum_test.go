@@ -257,14 +257,27 @@ func TestGetContainerProfileStream_NormalPath(t *testing.T) {
 	})
 
 	t.Run("checksum is stamped as an annotation", func(t *testing.T) {
+		checksum := ChecksumAlgorithmSHA256Prefix + "abc"
 		client, _ := newCPStreamClient(t,
-			cpMetaChunk(&proto.GetContainerProfileStreamChunkMetadata{Success: true, Exists: true, Checksum: "abc"}),
+			cpMetaChunk(&proto.GetContainerProfileStreamChunkMetadata{Success: true, Exists: true, Checksum: checksum}),
 			&proto.GetContainerProfileStreamChunk{BlobChunk: payload},
 		)
 		got, err := client.GetContainerProfileStream(context.Background(), "default", "nginx-abc")
 		require.NoError(t, err)
 		require.NotNil(t, got.Annotations)
-		assert.Equal(t, "abc", got.Annotations[ContainerProfileChecksumAnnotationKey])
+		assert.Equal(t, checksum, got.Annotations[ContainerProfileChecksumAnnotationKey])
+	})
+
+	t.Run("a checksum missing the algorithm prefix is dropped rather than stamped", func(t *testing.T) {
+		// No producer in this pipeline emits the prefix yet; this is the
+		// currently-inert state the whole feature is in until they do.
+		client, _ := newCPStreamClient(t,
+			cpMetaChunk(&proto.GetContainerProfileStreamChunkMetadata{Success: true, Exists: true, Checksum: "abc"}),
+			&proto.GetContainerProfileStreamChunk{BlobChunk: payload},
+		)
+		got, err := client.GetContainerProfileStream(context.Background(), "default", "nginx-abc")
+		require.NoError(t, err, "an unprefixed checksum degrades the optimization, not the fetch itself")
+		assert.Nil(t, got.Annotations, "must not stamp a checksum with no algorithm tag")
 	})
 
 	t.Run("empty checksum leaves existing annotations untouched", func(t *testing.T) {
@@ -294,7 +307,7 @@ func TestGetContainerProfileStream_NormalPath(t *testing.T) {
 		// instead validate the blank result, and every later conditional
 		// fetch would answer "unchanged" against it forever.
 		client, _ := newCPStreamClient(t,
-			cpMetaChunk(&proto.GetContainerProfileStreamChunkMetadata{Success: true, Exists: true, Checksum: "abc"}),
+			cpMetaChunk(&proto.GetContainerProfileStreamChunkMetadata{Success: true, Exists: true, Checksum: ChecksumAlgorithmSHA256Prefix + "abc"}),
 		)
 		got, err := client.GetContainerProfileStream(context.Background(), "default", "nginx-abc")
 		require.NoError(t, err, "the empty-body shape itself is unchanged: still not an error")
@@ -302,7 +315,9 @@ func TestGetContainerProfileStream_NormalPath(t *testing.T) {
 	})
 
 	t.Run("an implausibly long checksum is dropped rather than stamped", func(t *testing.T) {
-		huge := strings.Repeat("a", maxStampedChecksumLength+1)
+		// Prefixed, so this isolates the length gate rather than conflating it
+		// with the separate missing-prefix gate above.
+		huge := ChecksumAlgorithmSHA256Prefix + strings.Repeat("a", maxStampedChecksumLength+1-len(ChecksumAlgorithmSHA256Prefix))
 		client, _ := newCPStreamClient(t,
 			cpMetaChunk(&proto.GetContainerProfileStreamChunkMetadata{Success: true, Exists: true, Checksum: huge}),
 			&proto.GetContainerProfileStreamChunk{BlobChunk: payload},
@@ -312,8 +327,9 @@ func TestGetContainerProfileStream_NormalPath(t *testing.T) {
 		assert.Nil(t, got.Annotations, "must not stamp a checksum long enough to blow a later annotations write")
 	})
 
-	t.Run("a checksum at the length bound is still stamped", func(t *testing.T) {
-		exactlyMax := strings.Repeat("a", maxStampedChecksumLength)
+	t.Run("a prefixed checksum at the length bound is still stamped", func(t *testing.T) {
+		exactlyMax := ChecksumAlgorithmSHA256Prefix + strings.Repeat("a", maxStampedChecksumLength-len(ChecksumAlgorithmSHA256Prefix))
+		require.Len(t, exactlyMax, maxStampedChecksumLength, "test setup: must actually sit at the bound")
 		client, _ := newCPStreamClient(t,
 			cpMetaChunk(&proto.GetContainerProfileStreamChunkMetadata{Success: true, Exists: true, Checksum: exactlyMax}),
 			&proto.GetContainerProfileStreamChunk{BlobChunk: payload},

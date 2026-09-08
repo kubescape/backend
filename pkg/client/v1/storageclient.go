@@ -33,6 +33,24 @@ var ErrProfileUnchanged = errors.New("container profile unchanged")
 // Kubernetes' combined-annotations-size validation on write-back.
 const maxStampedChecksumLength = 256
 
+// ChecksumAlgorithmSHA256Prefix is the required prefix for every value carried in
+// GetContainerProfileStreamChunkMetadata.checksum and
+// GetContainerProfileStreamRequest.known_checksum: "sha256:<64 lowercase hex
+// characters>". Tagging the algorithm costs nothing now and is the only thing that
+// makes a future change of hash function a detectable format change instead of a
+// silent semantic one — two differently-hashed values could otherwise coincidentally
+// look like a match or a mismatch for the wrong reason.
+//
+// This is the canonical, kubescape/backend-owned definition of the convention; other
+// repositories producing or comparing these values (armosec/postgres-connector,
+// armosec/cadashboardbe) are expected to depend on this constant rather than
+// hardcoding the string. As of this change, no producer in this pipeline emits a
+// prefixed value yet — GetContainerProfileStream will not stamp a checksum that
+// lacks it (see maxStampedChecksumLength's sibling check), which degrades the
+// optimization to inert rather than failing the fetch, exactly like an oversized
+// checksum. Producers are expected to adopt the prefix in a follow-up change.
+const ChecksumAlgorithmSHA256Prefix = "sha256:"
+
 // ContainerProfileChecksumAnnotationKey is the ObjectMeta annotation under which
 // GetContainerProfileStream stamps the server-reported content checksum of a fetched
 // ContainerProfile, so callers can store it and present it back via
@@ -488,8 +506,13 @@ func (c *StorageClient) GetContainerProfileStream(ctx context.Context, namespace
 	// trustworthy. Stamping a checksum on it would instead validate the blank
 	// result, and every later conditional fetch would answer "unchanged" against
 	// it forever. Also drop an implausibly long checksum rather than stamp it —
-	// see maxStampedChecksumLength.
-	if md.Checksum != "" && len(buf) > 0 && len(md.Checksum) <= maxStampedChecksumLength {
+	// see maxStampedChecksumLength — and require the algorithm prefix (see
+	// ChecksumAlgorithmSHA256Prefix): none of this pipeline's producers emit it
+	// yet, so this currently keeps the optimization inert rather than trusting an
+	// unversioned value, exactly like the length bound above.
+	if md.Checksum != "" && len(buf) > 0 &&
+		len(md.Checksum) <= maxStampedChecksumLength &&
+		strings.HasPrefix(md.Checksum, ChecksumAlgorithmSHA256Prefix) {
 		if profile.Annotations == nil {
 			profile.Annotations = map[string]string{}
 		}

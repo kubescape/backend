@@ -1130,11 +1130,12 @@ func TestStorageClient_ContainerProfileStreamRoundTrip(t *testing.T) {
 		require.NoError(t, err)
 		rtSrv.cpServeExists = true
 		rtSrv.cpServeBytes = payload
-		rtSrv.cpServeChecksum = "abc"
+		checksum := ChecksumAlgorithmSHA256Prefix + "abc"
+		rtSrv.cpServeChecksum = checksum
 
 		fetched, err := client.GetContainerProfileStream(context.Background(), original.Namespace, original.Name)
 		require.NoError(t, err)
-		require.Equal(t, "abc", fetched.Annotations[ContainerProfileChecksumAnnotationKey], "sanity: the stamp is actually present before Send")
+		require.Equal(t, checksum, fetched.Annotations[ContainerProfileChecksumAnnotationKey], "sanity: the stamp is actually present before Send")
 
 		resp, err := client.SendContainerProfileStream(context.Background(), fetched)
 		require.NoError(t, err)
@@ -1147,7 +1148,7 @@ func TestStorageClient_ContainerProfileStreamRoundTrip(t *testing.T) {
 
 		// The caller's own object must be untouched — marshalContainerProfileForSend
 		// must not mutate the map it was handed.
-		assert.Equal(t, "abc", fetched.Annotations[ContainerProfileChecksumAnnotationKey],
+		assert.Equal(t, checksum, fetched.Annotations[ContainerProfileChecksumAnnotationKey],
 			"stripping for the wire must not mutate the caller's in-memory object")
 	})
 
