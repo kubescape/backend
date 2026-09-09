@@ -176,3 +176,9 @@ func (s *ServiceDiscoveryStreamV2) ParseResponse(response json.RawMessage) (sche
 
 	return nil, fmt.Errorf("invalid response")
 }
+
+// SetOtelEventsUrl is a no-op: the otel-events endpoint exists only in the v3 response.
+func (s *ServicesV2) SetOtelEventsUrl(string) {}
+
+// GetOtelEventsUrl always returns an empty string: the otel-events endpoint exists only in the v3 response.
+func (s *ServicesV2) GetOtelEventsUrl() string { return "" }

@@ -262,3 +262,15 @@ func TestServiceDiscoveryServerV3OtelEventsOmittedWhenUnset(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "otel-events.test.com:443", services.GetOtelEventsUrl())
 }
+
+func TestOtelEventsUrlIsEmptyOnV1AndV2(t *testing.T) {
+	v1Services, err := GetServices(v1.NewServiceDiscoveryFileV1("testdata/v1.json"))
+	assert.NoError(t, err)
+	assert.NotPanics(t, func() { v1Services.SetOtelEventsUrl("ignored") })
+	assert.Empty(t, v1Services.GetOtelEventsUrl())
+
+	v2Services, err := GetServices(v2.NewServiceDiscoveryFileV2("testdata/v2.json"))
+	assert.NoError(t, err)
+	assert.NotPanics(t, func() { v2Services.SetOtelEventsUrl("ignored") })
+	assert.Empty(t, v2Services.GetOtelEventsUrl())
+}
