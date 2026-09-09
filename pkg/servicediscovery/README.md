@@ -15,3 +15,9 @@ go test ./... -url domain.example -version v2
 ```bash
 go test ./... -url domain.example -version v3
 ```
+
+v4 (adds the optional `otel-events` endpoint)
+
+```
+go test ./... -url domain.example -version v4
+```

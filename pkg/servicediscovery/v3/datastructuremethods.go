@@ -145,13 +145,11 @@ func (s *ServicesV3) GetStorageUrl() string {
 	return s.StorageUrl
 }
 
-func (s *ServicesV3) SetOtelEventsUrl(val string) {
-	s.OtelEventsUrl = val
-}
+// SetOtelEventsUrl is a no-op: the otel-events endpoint exists only from the v4 response on.
+func (s *ServicesV3) SetOtelEventsUrl(string) {}
 
-func (s *ServicesV3) GetOtelEventsUrl() string {
-	return s.OtelEventsUrl
-}
+// GetOtelEventsUrl always returns an empty string: the otel-events endpoint exists only from the v4 response on.
+func (s *ServicesV3) GetOtelEventsUrl() string { return "" }
 
 func NewServiceDiscoveryFileV3(path string) *ServiceDiscoveryFileV3 {
 	return &ServiceDiscoveryFileV3{path: path}
