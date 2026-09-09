@@ -145,6 +145,14 @@ func (s *ServicesV3) GetStorageUrl() string {
 	return s.StorageUrl
 }
 
+func (s *ServicesV3) SetOtelEventsUrl(val string) {
+	s.OtelEventsUrl = val
+}
+
+func (s *ServicesV3) GetOtelEventsUrl() string {
+	return s.OtelEventsUrl
+}
+
 func NewServiceDiscoveryFileV3(path string) *ServiceDiscoveryFileV3 {
 	return &ServiceDiscoveryFileV3{path: path}
 }
