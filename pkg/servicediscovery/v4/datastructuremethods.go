@@ -43,11 +43,10 @@ func (sds *ServiceDiscoveryClientV4) GetScheme() string {
 
 func (sds *ServiceDiscoveryClientV4) ParseResponse(response json.RawMessage) (schema.IBackendServices, error) {
 	var services ServicesV4
-	if err := json.Unmarshal(response, &services); err == nil {
-		return &services, nil
+	if err := json.Unmarshal(response, &services); err != nil {
+		return nil, fmt.Errorf("invalid response: %w", err)
 	}
-
-	return nil, fmt.Errorf("invalid response")
+	return &services, nil
 }
 
 func (sds *ServiceDiscoveryClientV4) Get() (io.Reader, error) {
@@ -55,11 +54,16 @@ func (sds *ServiceDiscoveryClientV4) Get() (io.Reader, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer response.Body.Close()
 
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return nil, fmt.Errorf("server (%s) responded: %v", sds.GetHost(), response.StatusCode)
 	}
-	return response.Body, nil
+	data, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response from %s: %w", sds.GetHost(), err)
+	}
+	return bytes.NewReader(data), nil
 }
 
 func NewServiceDiscoveryServerV4(services ServicesV4) *ServiceDiscoveryServerV4 {
@@ -160,24 +164,23 @@ func NewServiceDiscoveryFileV4(path string) *ServiceDiscoveryFileV4 {
 func (s *ServiceDiscoveryFileV4) Get() (io.Reader, error) {
 	jsonFile, err := os.Open(s.path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file (%s): %v", s.path, err)
+		return nil, fmt.Errorf("failed to open file (%s): %w", s.path, err)
 	}
+	defer jsonFile.Close()
 	data, err := io.ReadAll(jsonFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file (%s): %v", s.path, err)
+		return nil, fmt.Errorf("failed to read file (%s): %w", s.path, err)
 	}
-	jsonFile.Close()
 
 	return bytes.NewReader(data), nil
 }
 
 func (s *ServiceDiscoveryFileV4) ParseResponse(response json.RawMessage) (schema.IBackendServices, error) {
 	var services ServicesV4
-	if err := json.Unmarshal(response, &services); err == nil {
-		return &services, nil
+	if err := json.Unmarshal(response, &services); err != nil {
+		return nil, fmt.Errorf("invalid response: %w", err)
 	}
-
-	return nil, fmt.Errorf("invalid response")
+	return &services, nil
 }
 
 func NewServiceDiscoveryStreamV4(data []byte) *ServiceDiscoveryStreamV4 {
@@ -190,9 +193,8 @@ func (s *ServiceDiscoveryStreamV4) Get() (io.Reader, error) {
 
 func (s *ServiceDiscoveryStreamV4) ParseResponse(response json.RawMessage) (schema.IBackendServices, error) {
 	var services ServicesV4
-	if err := json.Unmarshal(response, &services); err == nil {
-		return &services, nil
+	if err := json.Unmarshal(response, &services); err != nil {
+		return nil, fmt.Errorf("invalid response: %w", err)
 	}
-
-	return nil, fmt.Errorf("invalid response")
+	return &services, nil
 }

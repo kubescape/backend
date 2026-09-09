@@ -374,3 +374,10 @@ func TestOtelEventsUrlIsEmptyOnV1AndV2(t *testing.T) {
 	assert.NotPanics(t, func() { v2Services.SetOtelEventsUrl("ignored") })
 	assert.Empty(t, v2Services.GetOtelEventsUrl())
 }
+
+func TestServiceDiscoveryV4ParseErrorIsSurfaced(t *testing.T) {
+	_, err := GetServices(v4.NewServiceDiscoveryStreamV4([]byte(`{"version":"v4","response":"not-an-object"}`)))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid response")
+	assert.Contains(t, err.Error(), "json")
+}
