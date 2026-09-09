@@ -22,6 +22,10 @@ type ServicesV3 struct {
 	MetricsUrl           string `json:"metrics"`
 	SynchronizerUrl      string `json:"synchronizer"`
 	StorageUrl           string `json:"storage"`
+	// OtelEventsUrl is the OTLP/gRPC endpoint (host:port, TLS) that in-cluster agents export
+	// raw event telemetry to (the AI-Sandbox OTel collector). Optional: absent when the
+	// backend has no such collector configured.
+	OtelEventsUrl string `json:"otel-events,omitempty"`
 }
 
 type ServiceDiscoveryFileV3 struct {

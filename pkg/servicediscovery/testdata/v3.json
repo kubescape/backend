@@ -5,6 +5,7 @@
         "api-server": "https://api.test.com",
         "metrics": "https://metrics.test.com",
         "synchronizer": "wss://synchronizer.test.com",
-        "storage": "https://grpc.test.com"
+        "storage": "https://grpc.test.com",
+        "otel-events": "otel-events.test.com:443"
     }
 }

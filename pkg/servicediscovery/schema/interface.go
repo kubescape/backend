@@ -15,6 +15,8 @@ type IBackendServices interface {
 	SetStorageUrl(string)
 	SetMetricsUrl(string)
 	SetSynchronizerUrl(string)
+	// v3 only: OTLP/gRPC endpoint for agent event telemetry; empty when not configured
+	SetOtelEventsUrl(string)
 	GetReportReceiverHttpUrl() string
 	// deprecated - use v1 or v2
 	GetReportReceiverWebsocketUrl() string
@@ -24,6 +26,8 @@ type IBackendServices interface {
 	GetMetricsUrl() string
 	GetSynchronizerUrl() string
 	GetStorageUrl() string
+	// v3 only: OTLP/gRPC endpoint for agent event telemetry; empty when not configured
+	GetOtelEventsUrl() string
 }
 
 type IServiceDiscoveryClient interface {
