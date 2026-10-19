@@ -7,8 +7,11 @@ import (
 	"errors"
 	"io"
 	"math/rand/v2"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
+	"syscall"
 	"time"
 
 	v1 "github.com/kubescape/backend/pkg/server/v1"
@@ -398,8 +401,9 @@ func (api *KSCloudAPI) submitReportOnce(reportURL string, jazon []byte, opts ...
 
 const maxReportUploadRetryDelay = 10 * time.Second
 
-// isRetryableUploadError tells whether a failed upload may succeed when sent again: a transport error, or a
-// gateway / edge error status. Errors caused by the caller's context are never retried.
+// isRetryableUploadError tells whether a failed upload may succeed when sent again: a network failure, or a
+// gateway / edge error status. Errors caused by the caller's context, and requests that can never succeed (for
+// example an unset report URL, or a host that does not exist), are not retried.
 func isRetryableUploadError(ctx context.Context, err error) bool {
 	if ctx.Err() != nil {
 		return false
@@ -413,7 +417,22 @@ func isRetryableUploadError(ctx context.Context, err error) bool {
 		}
 		return false
 	}
-	return true
+
+	// *url.Error itself implements net.Error, so look at the error it wraps
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		err = urlErr.Err
+	}
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return !dnsErr.IsNotFound
+	}
+	var netErr net.Error // connection refused / reset, timeouts
+	if errors.As(err, &netErr) {
+		return true
+	}
+	// the connection was closed before a response came back
+	return errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, syscall.ECONNRESET)
 }
 
 // retryDelay is base * 2^(attempt-1), capped at maxReportUploadRetryDelay, plus up to 50% jitter.

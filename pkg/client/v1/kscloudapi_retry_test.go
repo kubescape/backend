@@ -130,6 +130,54 @@ func TestSubmitReportRetryTransportError(t *testing.T) {
 	require.Equal(t, 3, rt.count())
 }
 
+func TestSubmitReportRetryDroppedConnection(t *testing.T) {
+	// the server reads the request and closes the connection without answering, the way an origin does when the
+	// edge reports a 520: retried, and the third attempt gets an answer
+	var (
+		mu    sync.Mutex
+		calls int
+	)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.ReadAll(r.Body)
+		mu.Lock()
+		calls++
+		n := calls
+		mu.Unlock()
+		if n < 3 {
+			conn, _, err := w.(http.Hijacker).Hijack()
+			require.NoError(t, err)
+			_ = conn.Close()
+			return
+		}
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer ts.Close()
+
+	ks := newRetryTestAPI(t, ts.URL, WithReportUploadRetry(3, time.Millisecond))
+
+	body, err := ks.SubmitReport(mockPostureReport(t, "5d817063-096f-4d91-b39b-8665240080af", "special-cluster"))
+	require.NoError(t, err)
+	require.Equal(t, "ok", body)
+	mu.Lock()
+	require.Equal(t, 3, calls)
+	mu.Unlock()
+}
+
+func TestSubmitReportNoRetryWithoutReportURL(t *testing.T) {
+	// no report URL configured: the request can never be sent, so it must fail at once instead of backing off
+	rt := &countingRoundTripper{next: http.DefaultTransport}
+	ks := NewEmptyKSCloudAPI(append(testOptions,
+		WithReportUploadRetry(3, time.Hour),
+		WithHTTPClient(&http.Client{Transport: rt}),
+	)...)
+
+	start := time.Now()
+	_, err := ks.SubmitReport(mockPostureReport(t, "5d817063-096f-4d91-b39b-8665240080af", "special-cluster"))
+	require.Error(t, err)
+	require.Less(t, time.Since(start), 5*time.Second)
+	require.LessOrEqual(t, rt.count(), 1)
+}
+
 func TestSubmitReportRetryHonorsContext(t *testing.T) {
 	srv := &sequenceServer{statuses: []int{520}}
 	ts := httptest.NewServer(srv)
