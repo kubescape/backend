@@ -435,16 +435,17 @@ func isRetryableUploadError(ctx context.Context, err error) bool {
 	return errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, syscall.ECONNRESET)
 }
 
-// retryDelay is base * 2^(attempt-1), capped at maxReportUploadRetryDelay, plus up to 50% jitter.
+// retryDelay is base * 2^(attempt-1) plus up to 50% jitter, never more than maxReportUploadRetryDelay.
 func retryDelay(base time.Duration, attempt int) time.Duration {
 	if base <= 0 {
 		return 0
 	}
-	delay := base << (attempt - 1)
-	if delay <= 0 || delay > maxReportUploadRetryDelay {
-		delay = maxReportUploadRetryDelay
+	delay := base
+	for i := 1; i < attempt && delay < maxReportUploadRetryDelay; i++ {
+		delay *= 2
 	}
-	return delay + time.Duration(rand.Int64N(int64(delay)/2+1))
+	delay += time.Duration(rand.Int64N(int64(delay)/2 + 1))
+	return min(delay, maxReportUploadRetryDelay)
 }
 
 func sleepWithContext(ctx context.Context, d time.Duration) error {

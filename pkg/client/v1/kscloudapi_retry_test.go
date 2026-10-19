@@ -203,10 +203,28 @@ func TestSubmitReportRetryHonorsContext(t *testing.T) {
 }
 
 func TestRetryDelay(t *testing.T) {
-	for attempt, want := range map[int]time.Duration{1: time.Second, 2: 2 * time.Second, 3: 4 * time.Second, 5: 10 * time.Second, 64: 10 * time.Second} {
-		got := retryDelay(time.Second, attempt)
-		require.GreaterOrEqual(t, got, want, "attempt %d", attempt)
-		require.LessOrEqual(t, got, want+want/2, "attempt %d", attempt)
+	tests := []struct {
+		base     time.Duration
+		attempt  int
+		min, max time.Duration
+	}{
+		{base: time.Second, attempt: 1, min: time.Second, max: 1500 * time.Millisecond},
+		{base: time.Second, attempt: 2, min: 2 * time.Second, max: 3 * time.Second},
+		{base: time.Second, attempt: 3, min: 4 * time.Second, max: 6 * time.Second},
+		// 8s plus jitter would reach 12s: capped
+		{base: time.Second, attempt: 4, min: 8 * time.Second, max: maxReportUploadRetryDelay},
+		{base: time.Second, attempt: 5, min: maxReportUploadRetryDelay, max: maxReportUploadRetryDelay},
+		// a huge attempt number must not overflow the shift into a small or negative delay
+		{base: time.Second, attempt: 1000, min: maxReportUploadRetryDelay, max: maxReportUploadRetryDelay},
+		// a base above the cap is capped too
+		{base: time.Minute, attempt: 1, min: maxReportUploadRetryDelay, max: maxReportUploadRetryDelay},
+	}
+	for _, tc := range tests {
+		for range 50 { // the jitter is random: sample it
+			got := retryDelay(tc.base, tc.attempt)
+			require.GreaterOrEqual(t, got, tc.min, "base %s attempt %d", tc.base, tc.attempt)
+			require.LessOrEqual(t, got, tc.max, "base %s attempt %d", tc.base, tc.attempt)
+		}
 	}
 	require.Zero(t, retryDelay(0, 1))
 }
