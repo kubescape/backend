@@ -48,6 +48,17 @@ func ParseHost(host string) (string, string, error) {
 	return "https", strings.Replace(host, "https://", "", 1), nil
 }
 
+// APIError is an API call that got an HTTP error status. Callers can read StatusCode with errors.As.
+type APIError struct {
+	StatusCode int
+	Status     string
+	Reason     string
+}
+
+func (e *APIError) Error() string {
+	return fmt.Sprintf("http-error: '%s', reason: '%s'", e.Status, e.Reason)
+}
+
 // ErrAPI reports an API error, with a cap on the length of the error message.
 func ErrAPI(resp *http.Response) error {
 	const maxSize = 1024
@@ -63,7 +74,7 @@ func ErrAPI(resp *http.Response) error {
 		defer resp.Body.Close()
 	}
 
-	return fmt.Errorf("http-error: '%s', reason: '%s'", resp.Status, reason.String())
+	return &APIError{StatusCode: resp.StatusCode, Status: resp.Status, Reason: reason.String()}
 }
 
 func IsNativeFramework(framework string) bool {

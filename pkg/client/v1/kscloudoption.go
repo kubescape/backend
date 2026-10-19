@@ -17,6 +17,9 @@ type (
 		httpClient *http.Client
 		timeout    *time.Duration
 		withTrace  bool
+
+		reportUploadAttempts  int
+		reportUploadBaseDelay time.Duration
 	}
 
 	// request option instructs post/get/delete to alter the outgoing request
@@ -60,14 +63,35 @@ func WithTrace(enabled bool) KSCloudOption {
 	}
 }
 
+// WithReportUploadRetry sets how many times a posture report upload is attempted when it fails with a transient
+// error (a transport error, or HTTP 502, 503, 504 or 520-524), and the delay before the first retry. The delay
+// doubles on every retry, with jitter, and is capped at 10s.
+//
+// A value of 1 or less disables the retry.
+//
+// The default is 3 attempts with a 1s base delay.
+func WithReportUploadRetry(attempts int, baseDelay time.Duration) KSCloudOption {
+	return func(o *KsCloudOptions) {
+		o.reportUploadAttempts = attempts
+		o.reportUploadBaseDelay = baseDelay
+	}
+}
+
 var defaultClient = &http.Client{
 	Timeout: 61 * time.Second,
 }
 
+const (
+	defaultReportUploadAttempts  = 3
+	defaultReportUploadBaseDelay = time.Second
+)
+
 // ksCloudOptionsWithDefaults sets defaults for the KS client and applies overrides.
 func ksCloudOptionsWithDefaults(opts []KSCloudOption) *KsCloudOptions {
 	options := &KsCloudOptions{
-		httpClient: defaultClient,
+		httpClient:            defaultClient,
+		reportUploadAttempts:  defaultReportUploadAttempts,
+		reportUploadBaseDelay: defaultReportUploadBaseDelay,
 	}
 
 	for _, apply := range opts {

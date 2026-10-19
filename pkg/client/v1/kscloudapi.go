@@ -1,13 +1,18 @@
 package v1
 
 import (
-	"context"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"math/rand/v2"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
+	"syscall"
+	"time"
 
 	v1 "github.com/kubescape/backend/pkg/server/v1"
 	"github.com/kubescape/backend/pkg/utils"
@@ -362,8 +367,26 @@ func (api *KSCloudAPI) SubmitReportWithContext(ctx context.Context, report *Post
 	}
 
 	opts = append([]RequestOption{WithContext(ctx), WithContentJSON(true)}, opts...)
+	reportURL := api.postReportURL(report.ClusterName, report.ReportID)
 
-	rdr, _, err := api.post(api.postReportURL(report.ClusterName, report.ReportID), jazon, opts...)
+	// A transient edge or load-balancer error (e.g. a Cloudflare 520) would otherwise drop the whole report until
+	// the next scan. Re-sending a chunk is safe: the backend records chunks by (report GUID, chunk number).
+	for attempt := 1; ; attempt++ {
+		body, err := api.submitReportOnce(reportURL, jazon, opts...)
+		if err == nil {
+			return body, nil
+		}
+		if attempt >= api.reportUploadAttempts || !isRetryableUploadError(ctx, err) {
+			return "", err
+		}
+		if waitErr := sleepWithContext(ctx, retryDelay(api.reportUploadBaseDelay, attempt)); waitErr != nil {
+			return "", errors.Join(err, waitErr)
+		}
+	}
+}
+
+func (api *KSCloudAPI) submitReportOnce(reportURL string, jazon []byte, opts ...RequestOption) (string, error) {
+	rdr, _, err := api.post(reportURL, jazon, opts...)
 	if err != nil {
 		return "", err
 	}
@@ -374,6 +397,69 @@ func (api *KSCloudAPI) SubmitReportWithContext(ctx context.Context, report *Post
 		return string(b), nil
 	}
 	return "", err
+}
+
+const maxReportUploadRetryDelay = 10 * time.Second
+
+// isRetryableUploadError tells whether a failed upload may succeed when sent again: a network failure, or a
+// gateway / edge error status. Errors caused by the caller's context, and requests that can never succeed (for
+// example an unset report URL, or a host that does not exist), are not retried.
+func isRetryableUploadError(ctx context.Context, err error) bool {
+	if ctx.Err() != nil {
+		return false
+	}
+	var apiErr *utils.APIError
+	if errors.As(err, &apiErr) {
+		switch apiErr.StatusCode {
+		case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout,
+			520, 521, 522, 523, 524: // Cloudflare: origin returned an unknown error / is down / unreachable / timed out
+			return true
+		}
+		return false
+	}
+
+	// *url.Error itself implements net.Error, so look at the error it wraps
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		err = urlErr.Err
+	}
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		return !dnsErr.IsNotFound
+	}
+	var netErr net.Error // connection refused / reset, timeouts
+	if errors.As(err, &netErr) {
+		return true
+	}
+	// the connection was closed before a response came back
+	return errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, syscall.ECONNRESET)
+}
+
+// retryDelay is base * 2^(attempt-1) plus up to 50% jitter, never more than maxReportUploadRetryDelay.
+func retryDelay(base time.Duration, attempt int) time.Duration {
+	if base <= 0 {
+		return 0
+	}
+	delay := base
+	for i := 1; i < attempt && delay < maxReportUploadRetryDelay; i++ {
+		delay *= 2
+	}
+	delay += time.Duration(rand.Int64N(int64(delay)/2 + 1))
+	return min(delay, maxReportUploadRetryDelay)
+}
+
+func sleepWithContext(ctx context.Context, d time.Duration) error {
+	if d <= 0 {
+		return ctx.Err()
+	}
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.C:
+		return nil
+	}
 }
 
 func (api *KSCloudAPI) postReportURL(cluster, reportID string) string {
