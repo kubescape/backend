@@ -2,11 +2,18 @@ package versioncheck
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/mod/semver"
 )
 
@@ -92,7 +99,7 @@ func TestVersionCheckHandler_getLatestVersion(t *testing.T) {
 		v := &VersionCheckHandler{
 			versionURL: "https://version-check.ks-services.co",
 		}
-		got, err := v.getLatestVersion(&VersionCheckRequest{Client: "kubescape"})
+		got, err := v.getLatestVersion(context.Background(), &VersionCheckRequest{Client: "kubescape"})
 		if err != nil {
 			t.Fatalf("getLatestVersion() unexpected error = %v", err)
 		}
@@ -109,7 +116,7 @@ func TestVersionCheckHandler_getLatestVersion(t *testing.T) {
 		v := &VersionCheckHandler{
 			versionURL: "https://example.com",
 		}
-		got, err := v.getLatestVersion(&VersionCheckRequest{})
+		got, err := v.getLatestVersion(context.Background(), &VersionCheckRequest{})
 		assert.Error(t, err)
 		assert.Nil(t, got)
 	})
@@ -124,4 +131,74 @@ func TestGetTriggerSource(t *testing.T) {
 	os.Args[0] = "ksserver"
 	source = getTriggerSource()
 	assert.Equal(t, "microservice", source)
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
+
+// closeRecorder is a response body that remembers whether it was closed.
+type closeRecorder struct {
+	io.Reader
+	closed atomic.Bool
+}
+
+func (b *closeRecorder) Close() error {
+	b.closed.Store(true)
+	return nil
+}
+
+// withTransport sends version-check requests to rt, so these tests never reach the real service.
+func withTransport(t *testing.T, rt http.RoundTripper) {
+	t.Helper()
+	orig := versionCheckClient
+	versionCheckClient = &http.Client{Transport: rt}
+	t.Cleanup(func() { versionCheckClient = orig })
+}
+
+func TestVersionCheckHandler_fakeTransport(t *testing.T) {
+	v := &VersionCheckHandler{versionURL: "https://version-check.invalid"}
+
+	t.Run("should close the response body", func(t *testing.T) {
+		body := &closeRecorder{Reader: strings.NewReader(`{"client":"kubescape","clientUpdate":"v3.0.0"}`)}
+		withTransport(t, roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{StatusCode: http.StatusOK, Body: body, Header: make(http.Header), Request: req}, nil
+		}))
+
+		got, err := v.getLatestVersion(context.Background(), &VersionCheckRequest{})
+		require.NoError(t, err)
+		assert.Equal(t, "v3.0.0", got.ClientUpdate)
+		assert.True(t, body.closed.Load(), "response body was not closed")
+	})
+
+	t.Run("should stop at the caller deadline when the server never answers", func(t *testing.T) {
+		ctxErr := make(chan error, 1)
+		withTransport(t, roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			select {
+			case <-req.Context().Done():
+				ctxErr <- req.Context().Err()
+				return nil, req.Context().Err()
+			case <-time.After(5 * time.Second):
+				ctxErr <- nil
+				return nil, errors.New("request context never ended")
+			}
+		}))
+
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
+
+		require.Error(t, v.CheckLatestVersion(ctx, &VersionCheckRequest{}))
+		require.ErrorIs(t, <-ctxErr, context.DeadlineExceeded)
+	})
+
+	t.Run("should return the transport error", func(t *testing.T) {
+		errDial := errors.New("dial failed")
+		withTransport(t, roundTripFunc(func(*http.Request) (*http.Response, error) {
+			return nil, errDial
+		}))
+
+		got, err := v.getLatestVersion(context.Background(), &VersionCheckRequest{})
+		require.ErrorIs(t, err, errDial)
+		assert.Nil(t, got)
+	})
 }
