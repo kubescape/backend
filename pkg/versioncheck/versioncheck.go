@@ -1,6 +1,7 @@
 package versioncheck
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,12 +9,12 @@ import (
 	"os"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/armosec/utils-go/boolutils"
 	"github.com/kubescape/backend/pkg/utils"
 	"github.com/kubescape/go-logger"
 	"github.com/kubescape/go-logger/helpers"
-	"github.com/kubescape/kubescape/v3/core/cautils/getter"
 	"github.com/mattn/go-isatty"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/mod/semver"
@@ -37,6 +38,9 @@ func init() {
 }
 
 var LatestReleaseVersion string
+
+// versionCheckClient bounds the check so a network that never answers cannot hold the caller.
+var versionCheckClient = &http.Client{Timeout: 5 * time.Second}
 
 const UnknownBuildNumber = "unknown"
 
@@ -186,7 +190,7 @@ func (v *VersionCheckHandler) CheckLatestVersion(ctx context.Context, versionDat
 		}
 	}()
 
-	latestVersion, err := v.getLatestVersion(versionData)
+	latestVersion, err := v.getLatestVersion(ctx, versionData)
 	if err != nil || latestVersion == nil {
 		return fmt.Errorf("failed to get latest version")
 	}
@@ -221,21 +225,30 @@ func normalizeVersion(v string) string {
 	return v
 }
 
-func (v *VersionCheckHandler) getLatestVersion(versionData *VersionCheckRequest) (*VersionCheckResponse, error) {
+func (v *VersionCheckHandler) getLatestVersion(ctx context.Context, versionData *VersionCheckRequest) (*VersionCheckResponse, error) {
 
 	reqBody, err := json.Marshal(*versionData)
 	if err != nil {
 		return nil, fmt.Errorf("in 'CheckLatestVersion' failed to json.Marshal, reason: %s", err.Error())
 	}
 
-	rdr, _, err := getter.HTTPPost(http.DefaultClient, v.versionURL, reqBody, map[string]string{"Content-Type": "application/json"})
-
-	vResp, err := utils.Decode[*VersionCheckResponse](rdr)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, v.versionURL, bytes.NewReader(reqBody))
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Set("Content-Type", "application/json")
 
-	return vResp, nil
+	resp, err := versionCheckClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, utils.ErrAPI(resp)
+	}
+
+	return utils.Decode[*VersionCheckResponse](resp.Body)
 }
 
 func warningMessage(release string) string {

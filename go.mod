@@ -10,7 +10,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/json-iterator/go v1.1.12
 	github.com/kubescape/go-logger v0.0.28
-	github.com/kubescape/kubescape/v3 v3.0.4
 	github.com/kubescape/opa-utils v0.0.283
 	github.com/kubescape/storage v0.0.305
 	github.com/mattn/go-isatty v0.0.21
@@ -87,7 +86,6 @@ require (
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/github/go-spdx/v2 v2.4.0 // indirect
-	github.com/go-gota/gota v0.12.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -124,7 +122,6 @@ require (
 	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/kubescape/k8s-interface v0.0.214 // indirect
 	github.com/kubescape/rbac-utils v0.0.21-0.20230806101615-07e36f555520 // indirect
-	github.com/kubescape/regolibrary v1.0.317-0.20240320124840-1d84ac7186ea // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mackerelio/go-osstat v0.2.5 // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
@@ -212,7 +209,6 @@ require (
 	golang.org/x/term v0.43.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
-	gonum.org/v1/gonum v0.17.0 // indirect
 	google.golang.org/api v0.267.0 // indirect
 	google.golang.org/genproto v0.0.0-20260128011058-8636f8732409 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260414002931-afd174a4e478 // indirect
